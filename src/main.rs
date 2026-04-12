@@ -74,14 +74,44 @@ impl Mmu {
 
     /// write the bytes from `buf` into `addr`
     pub fn write_from(&mut self, addr: VirtAddr, buf: &[u8]) -> Option<()> {
+        let perms = self.permissions.get_mut(addr.0..addr.0.checked_add(buf.len())?)?;
+
+        // Check permissions
+        let mut has_raw = false;
+        if !perms.iter().all(|x| {
+            has_raw |= (x.0 & PERM_RAW) != 0;
+            (x.0 & PERM_WRITE) != 0
+        }) {
+            return None;
+        }
+
         self.memory.get_mut(addr.0..addr.0.checked_add(buf.len())?)?
             .copy_from_slice(buf);
+
+        // Update Raw bits
+        if has_raw {
+            perms.iter_mut().for_each(|x| {
+                if (x.0 & PERM_RAW) != 0 {
+                    // Mark memory as readable
+                    *x = Perm(x.0 | PERM_READ);
+                }
+            });
+        }        
+
         Some(())
     }        
 
-    pub fn read_into(&mut self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+    pub fn read_into(self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+        let perms = self.permissions.get(addr.0..addr.0.checked_add(buf.len())?)?;
+
+        // Check permissions
+        let mut has_raw = false;
+        if !perms.iter().all(|x| (x.0 & PERM_READ) != 0) {
+            return None;
+        }
+
         buf.copy_from_slice(
-            self.memory.get_mut(addr.0..addr.0.checked_add(buf.len())?)?);
+            self.memory.get(addr.0..addr.0.checked_add(buf.len())?)?);
         Some(())
     }        
 }
@@ -105,9 +135,9 @@ fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
 
     let tmp = emu.memory.allocate(4096).unwrap();
-    emu.memory.write_from(VirtAddr(tmp.0 + 1), b"asdf").unwrap();
+    emu.memory.write_from(VirtAddr(tmp.0 + 0), b"asdf").unwrap();
 
-    let mut bytes = [0u8; 32];
+    let mut bytes = [0u8; 4];
     emu.memory.read_into(tmp, &mut bytes).unwrap();
 
     print!("{:x?}\n", bytes);
