@@ -51,6 +51,26 @@ impl Mmu {
             cur_alc:      VirtAddr(0x10000),
         }
     }
+    /// Restores memory back to the original state (eg. restore all dirty
+    /// blocks to the state of `other`)
+    pub fn reset(&mut self, other: &Mmu) {
+        for &block in &self.dirty {
+            // Get the start and end addresses of the dirtied memory
+            let start = block.0 + DIRTY_BLOCK_SIZE;
+            let end   = (block.0 + 1) * DIRTY_BLOCK_SIZE;
+
+            // Zero the bitmap. This hits wide, but it's fine, we have to do
+            // a 64-bit write anyways, no reason to compute the bit index
+            self.dirty_bitmap[start / 64] = 0;
+
+            // Restore memory state
+            self.memory[start..end].copy_from_slice(&other.memory[start..end]);
+        }
+        // Clear the dirty list
+        self.dirty.clear();
+    }
+
+
     /// Allocate a region of memory as RW in the address space
     pub fn allocate(&mut self, size: usize) -> Option<VirtAddr> {
         // 16-byte align the allocation
@@ -134,6 +154,7 @@ impl Mmu {
         Some(())
     }        
 
+    /// Read the memory at `addr` into `buf`
     pub fn read_into(&self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
         let perms = self.permissions.get(addr.0..addr.0.checked_add(buf.len())?)?;
 
@@ -175,5 +196,5 @@ fn main() {
 
     print!("Dirted {:x?}\n", emu.memory.dirty);
 
-    print!("{:x?}\n", bytes);
+    print!("{:x?}\n", bytes);    
 }
