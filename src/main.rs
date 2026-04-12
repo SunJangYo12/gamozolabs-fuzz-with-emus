@@ -214,23 +214,13 @@ impl Emulator {
 fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
     let tmp = emu.memory.allocate(4).unwrap();
-//    emu.memory.write_from(tmp, b"asdf").unwrap();
+    emu.memory.write_from(tmp, b"asdf").unwrap();
 
     {
         let mut forked = emu.fork();
 
-        forked.memory.write_from(tmp, b"AAAA").unwrap();
-        let mut bytes = [0u8; 4];
-        forked.memory.read_into(tmp, &mut bytes).unwrap();
-
-        print!("Dirted {:x?}\n", bytes);
-
-        forked.memory.reset(&emu.memory);
-
-
-        let mut bytes = [0u8; 4];
-        forked.memory.read_into(tmp, &mut bytes).unwrap();
-
-        print!("After reset {:x?}\n", bytes);
+        for ii in 0..1000000 {
+            forked.memory.reset(&emu.memory);
+        }
     }
 }
