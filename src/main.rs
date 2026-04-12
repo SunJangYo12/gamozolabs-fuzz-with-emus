@@ -71,6 +71,19 @@ impl Mmu {
             .iter_mut().for_each(|x| *x = perm);
         Some(())
     }
+
+    /// write the bytes from `buf` into `addr`
+    pub fn write_from(&mut self, addr: VirtAddr, buf: &[u8]) -> Option<()> {
+        self.memory.get_mut(addr.0..addr.0.checked_add(buf.len())?)?
+            .copy_from_slice(buf);
+        Some(())
+    }        
+
+    pub fn read_into(&mut self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+        buf.copy_from_slice(
+            self.memory.get_mut(addr.0..addr.0.checked_add(buf.len())?)?);
+        Some(())
+    }        
 }
 
 /// All the state of the emulated system
