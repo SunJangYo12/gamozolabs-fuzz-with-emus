@@ -31,7 +31,7 @@ impl Mmu {
     // Create a new memory space which can hold `size` bytes
     pub fn new(size: usize) -> Self {
         Mmu {
-            memory:      vec![0; size],
+            memory:      vec![0; size], //buat 0 sebanyak size
             permissions: vec![Perm(0); size],
             cur_alc:     VirtAddr(0x10000),
         }
@@ -64,14 +64,19 @@ impl Mmu {
     }
 
     /// Apply permissions to a region of memory
-    pub fn set_permissions(&mut self, addr: VirtAddr, size: usize, perm: Perm) {
+    pub fn set_permissions(&mut self, addr: VirtAddr, size: usize,
+                            perm: Perm) -> Option<()> {
+        // Apply permissions
+        self.permissions.get_mut(addr.0..addr.0.checked_add(size)?)?
+            .iter_mut().for_each(|x| *x = perm);
+        Some(())
     }
 }
 
 /// All the state of the emulated system
 struct Emulator {
     /// Memory for the emulator
-    memory: Mmu,
+    pub memory: Mmu,
 }
 
 impl Emulator {
@@ -84,6 +89,9 @@ impl Emulator {
 }
 
 fn main() {
-    let mut emu = Emulator::new(1024 * 1024);
+    let mut emu = Emulator::new(1024 * 1024); // 1MB
+
+    print!("{:x?}\n", emu.memory.allocate(4096));
+
     println!("Hello, world!");
 }
