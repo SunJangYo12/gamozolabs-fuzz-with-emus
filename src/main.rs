@@ -219,7 +219,7 @@ fn main() {
     {
         let mut forked = emu.fork();
 
-        for ii in 0..1000000 {
+        for ii in 0..100_000_000 {
             forked.memory.reset(&emu.memory);
         }
     }
