@@ -244,6 +244,12 @@ impl Emulator {
             // Demote permissions to originals
             self.memory.set_permissions(section.virt_addr, section.mem_size,
                                         section.permissions)?;
+
+            // Update the allocator beyond any sections we load
+            self.memory.cur_alc = VirtAddr(std::cmp::max(
+                self.memory.cur_alc.0,
+                (section.virt_addr.0 + section.mem_size + 0xf) & !0xf
+            ));
         }
 
         Some(())
@@ -261,6 +267,7 @@ struct Section {
 fn main() {
     let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
 
+    // Loa the application into the emulator
     // readelf -l test_app
     emu.load("./test_app", &[
         Section {
