@@ -105,7 +105,7 @@ fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
 
     let tmp = emu.memory.allocate(4096).unwrap();
-    emu.memory.write_from(tmp, b"asdf").unwrap();
+    emu.memory.write_from(VirtAddr(tmp.0 + 1), b"asdf").unwrap();
 
     let mut bytes = [0u8; 32];
     emu.memory.read_into(tmp, &mut bytes).unwrap();
