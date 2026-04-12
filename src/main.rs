@@ -1,3 +1,5 @@
+use std::path::Path;
+
 const PERM_READ:  u8 = 1 << 0;
 const PERM_WRITE: u8 = 1 << 1;
 const PERM_EXEC:  u8 = 1 << 2;
@@ -209,6 +211,36 @@ impl Emulator {
             memory: self.memory.fork(),
         }
     }
+
+    /// Load a file into the emulators address space using the sections
+    /// as described
+    fn load<P: AsRef<Path>>(&mut self, filename: P,
+                            sections: &[Section]) -> Option<()> {
+        // Read the input file
+        let contents = std::fs::read(filename).ok()?;
+
+        // Go through each section and load it
+        for section in sections {
+            // Set memory to writeable
+            self.memory.set_permissions(section.virt_addr, section.mem_size,
+                                        Perm(PERM_WRITE))?;
+
+            // Write in the original file contents
+            self.memory.write_from(section.virt_addr,
+                contents.get(section.file_off..
+                             section.file_off.checked_add(section.file_size)?)?)?;
+        }
+
+        Some(())
+    }
+}
+
+struct Section {
+    file_off:   usize,
+    virt_addr:  VirtAddr,
+    file_size:  usize,
+    mem_size:   usize,
+    permissons: Perm,
 }
 
 fn main() {
@@ -219,8 +251,8 @@ fn main() {
     {
         let mut forked = emu.fork();
 
-        for ii in 0..100_000_000 {
-            emu.memory.write_from(tmp, b"asdf").unwrap();
+        for ii in 0..1_000_000 {
+            //emu.memory.write_from(tmp, b"asdf").unwrap();
             forked.memory.reset(&emu.memory);
         }
     }
