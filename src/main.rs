@@ -80,6 +80,10 @@ impl Mmu {
 
             // Restore memory state
             self.memory[start..end].copy_from_slice(&other.memory[start..end]);
+
+            // Restore permissions
+            self.permissions[start..end].copy_from_slice(
+                &other.permissions[start..end]);
         }
         // Clear the dirty list
         self.dirty.clear();
@@ -210,7 +214,7 @@ impl Emulator {
 fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
     let tmp = emu.memory.allocate(4).unwrap();
-    emu.memory.write_from(tmp, b"asdf").unwrap();
+//    emu.memory.write_from(tmp, b"asdf").unwrap();
 
     {
         let mut forked = emu.fork();
