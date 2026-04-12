@@ -180,7 +180,6 @@ impl Mmu {
         let perms = self.permissions.get(addr.0..addr.0.checked_add(buf.len())?)?;
 
         // Check permissions
-        let mut has_raw = false;
         if !perms.iter().all(|x| (x.0 & PERM_READ) != 0) {
             return None;
         }
@@ -239,7 +238,12 @@ impl Emulator {
                     VirtAddr(section.virt_addr.0
                             .checked_add(section.file_size)?),
                     &padding)?;
+
             }
+
+            // Demote permissions to originals
+            self.memory.set_permissions(section.virt_addr, section.mem_size,
+                                        section.permissions)?;
         }
 
         Some(())
@@ -251,18 +255,45 @@ struct Section {
     virt_addr:  VirtAddr,
     file_size:  usize,
     mem_size:   usize,
-    permissons: Perm,
+    permissions: Perm,
 }
 
 fn main() {
-    let mut emu = Emulator::new(1024 * 1024); // 1MB
+    let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
+
+    // readelf -l test_app
+    emu.load("./test_app", &[
+        Section {
+            file_off:    0x0000000000000000,            // first LOAD
+            virt_addr:   VirtAddr(0x0000000000010000),
+            file_size:   0x0000000000000190,
+            mem_size:    0x0000000000000190,
+            permissions: Perm(PERM_READ),
+        },
+        Section {
+            file_off:    0x0000000000000000,
+            virt_addr:   VirtAddr(0x0000000000010000),
+            file_size:   0x0000000000000190,
+            mem_size:    0x0000000000000190,
+            permissions: Perm(PERM_EXEC),
+        },
+        Section {
+            file_off:    0x0000000000000000,
+            virt_addr:   VirtAddr(0x0000000000010000),
+            file_size:   0x0000000000000190,
+            mem_size:    0x0000000000000190,
+            permissions: Perm(PERM_READ | PERM_WRITE),
+        },
+    ]).expect("Failed to load test application into address space");
+
+
     let tmp = emu.memory.allocate(4).unwrap();
     emu.memory.write_from(tmp, b"asdf").unwrap();
 
     {
         let mut forked = emu.fork();
 
-        for ii in 0..1_000_000 {
+        for _ in 0..1_000_000 {
             //emu.memory.write_from(tmp, b"asdf").unwrap();
             forked.memory.reset(&emu.memory);
         }
