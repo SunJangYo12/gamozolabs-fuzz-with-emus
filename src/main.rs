@@ -30,8 +30,8 @@ struct Mmu {
     // Holds the permission bytes for the corresponding byte in memory
     permissions: Vec<Perm>,
 
-    /// Tracks blocks in `memory` which are dirty
-    dirty: Vec<VirtAddr>,
+    /// Tracks blocks indicies in `memory` which are dirty
+    dirty: Vec<usize>,
 
     /// Tracks which parts of memory have been dirtied
     dirty_bitmap: Vec<u64>,
@@ -51,17 +51,32 @@ impl Mmu {
             cur_alc:      VirtAddr(0x10000),
         }
     }
+    /// Fork from an existing MMU
+    pub fn fork(&self) -> Self {
+        let size = self.memory.len();
+
+        Mmu {
+            memory:       self.memory.clone(),
+            permissions:  self.permissions.clone(),
+            dirty:        Vec::with_capacity(size / DIRTY_BLOCK_SIZE + 1),
+            dirty_bitmap: vec![0u64; size / DIRTY_BLOCK_SIZE / 64 + 1],
+            cur_alc:      self.cur_alc.clone(),
+        }
+    }
+        
+
+
     /// Restores memory back to the original state (eg. restore all dirty
     /// blocks to the state of `other`)
     pub fn reset(&mut self, other: &Mmu) {
         for &block in &self.dirty {
             // Get the start and end addresses of the dirtied memory
-            let start = block.0 + DIRTY_BLOCK_SIZE;
-            let end   = (block.0 + 1) * DIRTY_BLOCK_SIZE;
+            let start = block * DIRTY_BLOCK_SIZE;
+            let end   = (block + 1) * DIRTY_BLOCK_SIZE;
 
             // Zero the bitmap. This hits wide, but it's fine, we have to do
             // a 64-bit write anyways, no reason to compute the bit index
-            self.dirty_bitmap[start / 64] = 0;
+            self.dirty_bitmap[block / 64] = 0;
 
             // Restore memory state
             self.memory[start..end].copy_from_slice(&other.memory[start..end]);
@@ -134,7 +149,7 @@ impl Mmu {
             // Check if the block is not dirty
             if self.dirty_bitmap[idx] & (1 << bit) == 0 {
                 // Block is not dirty, add it to the dirty list
-                self.dirty.push(VirtAddr(block * DIRTY_BLOCK_SIZE));
+                self.dirty.push(block);
 
                 // Update the dirty bitmap
                 self.dirty_bitmap[idx] |= 1 << bit;
@@ -183,18 +198,35 @@ impl Emulator {
             memory: Mmu::new(size),
         }
     }
+
+    /// Fork an emulator into a new emulator which will diff from the original
+    pub fn fork(&self) -> Self {
+        Emulator {
+            memory: self.memory.fork(),
+        }
+    }
 }
 
 fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
+    let tmp = emu.memory.allocate(4).unwrap();
+    emu.memory.write_from(tmp, b"asdf").unwrap();
 
-    let tmp = emu.memory.allocate(4096).unwrap();
-    emu.memory.write_from(VirtAddr(tmp.0 + 0), b"asdf").unwrap();
+    {
+        let mut forked = emu.fork();
 
-    let mut bytes = [0u8; 4];
-    emu.memory.read_into(tmp, &mut bytes).unwrap();
+        forked.memory.write_from(tmp, b"AAAA").unwrap();
+        let mut bytes = [0u8; 4];
+        forked.memory.read_into(tmp, &mut bytes).unwrap();
 
-    print!("Dirted {:x?}\n", emu.memory.dirty);
+        print!("Dirted {:x?}\n", bytes);
 
-    print!("{:x?}\n", bytes);    
+        forked.memory.reset(&emu.memory);
+
+
+        let mut bytes = [0u8; 4];
+        forked.memory.read_into(tmp, &mut bytes).unwrap();
+
+        print!("After reset {:x?}\n", bytes);
+    }
 }
