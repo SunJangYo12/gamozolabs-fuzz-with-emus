@@ -227,8 +227,19 @@ impl Emulator {
 
             // Write in the original file contents
             self.memory.write_from(section.virt_addr,
-                contents.get(section.file_off..
-                             section.file_off.checked_add(section.file_size)?)?)?;
+                contents.get(
+                    section.file_off..
+                    section.file_off.checked_add(section.file_size)?)?
+                )?;
+
+            // Write in any padding with zeros
+            if section.mem_size > section.file_size {
+                let padding = vec![0u8; section.mem_size - section.file_size];
+                self.memory.write_from(
+                    VirtAddr(section.virt_addr.0
+                            .checked_add(section.file_size)?),
+                    &padding)?;
+            }
         }
 
         Some(())
