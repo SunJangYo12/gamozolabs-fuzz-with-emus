@@ -28,6 +28,16 @@ struct Emulator {
     memory: Mmu,
 }
 
+impl Emulator {
+    /// Creates a new emulator with `size` bytes of memory
+    pub fn new(size: usize) -> Self {
+        Emulator {
+            memory: Mmu::new(size),
+        }
+    }
+}
+
 fn main() {
+    let mut emu = Emulator::new(1024 * 1024);
     println!("Hello, world!");
 }
