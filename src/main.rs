@@ -3,6 +3,13 @@ const PERM_WRITE: u8 = 1 << 1;
 const PERM_EXEC:  u8 = 1 << 2;
 const PERM_RAW:   u8 = 1 << 3;
 
+/// Block size used for resetting and tracking memory which has been modified
+/// The larger this is, the fewer but more expensive memcpys() need to occur.
+/// the small, the greather but less expensive memcpys() need to occur.
+/// It seems the sweet spot is often 128-4096 bytes
+const DIRTY_BLOCK_SIZE: usize = 4096;
+
+
 /// A permissions byte which corresponds to a memory byte and defines
 /// the permissions it has
 #[repr(transparent)]
@@ -23,6 +30,12 @@ struct Mmu {
     // Holds the permission bytes for the corresponding byte in memory
     permissions: Vec<Perm>,
 
+    /// Tracks blocks in `memory` which are dirty
+    dirty: Vec<VirtAddr>,
+
+    /// Tracks which parts of memory have been dirtied
+    dirty_bitmap: Vec<u64>,
+
     /// Current base address of the next allocation
     cur_alc: VirtAddr,
 }
@@ -31,9 +44,11 @@ impl Mmu {
     // Create a new memory space which can hold `size` bytes
     pub fn new(size: usize) -> Self {
         Mmu {
-            memory:      vec![0; size], //buat 0 sebanyak size
-            permissions: vec![Perm(0); size],
-            cur_alc:     VirtAddr(0x10000),
+            memory:       vec![0; size], //buat 0 sebanyak size
+            permissions:  vec![Perm(0); size],
+            dirty:        Vec::with_capacity(size / DIRTY_BLOCK_SIZE + 1),
+            dirty_bitmap: vec![0u64; size / DIRTY_BLOCK_SIZE / 64 + 1],
+            cur_alc:      VirtAddr(0x10000),
         }
     }
     /// Allocate a region of memory as RW in the address space
@@ -88,6 +103,24 @@ impl Mmu {
         self.memory.get_mut(addr.0..addr.0.checked_add(buf.len())?)?
             .copy_from_slice(buf);
 
+        // Compute dirty bit blocks
+        let block_start = addr.0 / DIRTY_BLOCK_SIZE;
+        let block_end   = (addr.0 + buf.len()) / DIRTY_BLOCK_SIZE;
+        for block in block_start..=block_end {
+            // Determine the bitmap position of the dirty block
+            let idx = block_start / 64;
+            let bit = block_start % 64;
+
+            // Check if the block is not dirty
+            if self.dirty_bitmap[idx] & (1 << bit) == 0 {
+                // Block is not dirty, add it to the dirty list
+                self.dirty.push(VirtAddr(block * DIRTY_BLOCK_SIZE));
+
+                // Update the dirty bitmap
+                self.dirty_bitmap[idx] |= 1 << bit;
+            }
+        }
+
         // Update Raw bits
         if has_raw {
             perms.iter_mut().for_each(|x| {
@@ -101,7 +134,7 @@ impl Mmu {
         Some(())
     }        
 
-    pub fn read_into(self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+    pub fn read_into(&self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
         let perms = self.permissions.get(addr.0..addr.0.checked_add(buf.len())?)?;
 
         // Check permissions
@@ -135,10 +168,12 @@ fn main() {
     let mut emu = Emulator::new(1024 * 1024); // 1MB
 
     let tmp = emu.memory.allocate(4096).unwrap();
-    //emu.memory.write_from(VirtAddr(tmp.0 + 0), b"asdf").unwrap();
+    emu.memory.write_from(VirtAddr(tmp.0 + 0), b"asdf").unwrap();
 
     let mut bytes = [0u8; 4];
     emu.memory.read_into(tmp, &mut bytes).unwrap();
+
+    print!("Dirted {:x?}\n", emu.memory.dirty);
 
     print!("{:x?}\n", bytes);
 }
