@@ -16,15 +16,15 @@ const DIRTY_BLOCK_SIZE: usize = 4096;
 /// the permissions it has
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Perm(u8);
+pub struct Perm(pub u8);
 
 /// A guest virtual address
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct VirtAddr(usize);
+pub struct VirtAddr(pub usize);
 
 /// An isolated memory space
-struct Mmu {
+pub struct Mmu {
     // Block of memory for this address space
     // Offset 0 corresponds to address 0 in the guest address space
     memory: Vec<u8>,
@@ -200,7 +200,7 @@ impl Mmu {
 }
 
 /// All the state of the emulated system
-struct Emulator {
+pub struct Emulator {
     /// Memory for the emulator
     pub memory: Mmu,
 
@@ -211,7 +211,7 @@ struct Emulator {
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug)]
 #[repr(usize)]
-enum Register {
+pub enum Register {
     Zero = 0,
     Ra,
     Sp,
@@ -348,12 +348,12 @@ impl Emulator {
 
 
 /// Section information for a file
-struct Section {
-    file_off:   usize,
-    virt_addr:  VirtAddr,
-    file_size:  usize,
-    mem_size:   usize,
-    permissions: Perm,
+pub struct Section {
+    pub file_off:   usize,
+    pub virt_addr:  VirtAddr,
+    pub file_size:  usize,
+    pub mem_size:   usize,
+    pub permissions: Perm,
 }
 
 fn main() {
