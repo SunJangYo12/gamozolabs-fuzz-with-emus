@@ -54,7 +54,7 @@ impl Mmu {
         }
     }
     /// Fork from an existing MMU
-    pub fn fork(&self) -> Self {
+    fn fork(&self) -> Self {
         let size = self.memory.len();
 
         Mmu {
@@ -70,7 +70,7 @@ impl Mmu {
 
     /// Restores memory back to the original state (eg. restore all dirty
     /// blocks to the state of `other`)
-    pub fn reset(&mut self, other: &Mmu) {
+    fn reset(&mut self, other: &Mmu) {
         for &block in &self.dirty {
             // Get the start and end addresses of the dirtied memory
             let start = block * DIRTY_BLOCK_SIZE;
@@ -203,6 +203,48 @@ impl Mmu {
 struct Emulator {
     /// Memory for the emulator
     pub memory: Mmu,
+
+    /// All RV64i registers
+    registers: [u64; 33],
+}
+
+/// 64-bit RISC-V registers
+#[derive(Clone, Copy, Debug)]
+#[repr(usize)]
+enum Register {
+    Zero = 0,
+    Ra,
+    Sp,
+    Gp,
+    Tp,
+    T0,
+    T1,
+    T2,
+    S0,
+    S1,
+    A0,
+    A1,
+    A2,
+    A3,
+    A4,
+    A5,
+    A6,
+    A7,
+    S2,
+    S3,
+    S4,
+    S5,
+    S6,
+    S7,
+    S8,
+    S9,
+    S10,
+    S11,
+    T3,
+    T4,
+    T5,
+    T6,
+    Pc,
 }
 
 impl Emulator {
@@ -210,19 +252,43 @@ impl Emulator {
     pub fn new(size: usize) -> Self {
         Emulator {
             memory: Mmu::new(size),
+            registers: [0; 33],
         }
     }
 
     /// Fork an emulator into a new emulator which will diff from the original
     pub fn fork(&self) -> Self {
         Emulator {
-            memory: self.memory.fork(),
+            memory:    self.memory.fork(),
+            registers: self.registers.clone(),
         }
     }
 
+    /// Reset the state of `self` to `other`, assuming that `self`
+    /// is forked off of `other`. If it is not, the results are invalid.
+    pub fn reset(&mut self, other: &Self) {
+        // Reset memory state
+        self.memory.reset(&other.memory);
+
+        // Reset register state
+        self.registers = other.registers;
+    }
+
+    /// Get a register from the guest
+    pub fn reg(&self, register: Register) -> u64 {
+        self.registers[register as usize]
+    }
+
+    /// Set a register from the guest
+    pub fn set_reg(&mut self, register: Register, val: u64) {
+        self.registers[register as usize] = val;
+    }
+    
+
+
     /// Load a file into the emulators address space using the sections
     /// as described
-    fn load<P: AsRef<Path>>(&mut self, filename: P,
+    pub fn load<P: AsRef<Path>>(&mut self, filename: P,
                             sections: &[Section]) -> Option<()> {
         // Read the input file
         let contents = std::fs::read(filename).ok()?;
@@ -267,6 +333,8 @@ impl Emulator {
     }
 }
 
+
+/// Section information for a file
 struct Section {
     file_off:   usize,
     virt_addr:  VirtAddr,
@@ -305,17 +373,12 @@ fn main() {
     ]).expect("Failed to load test application into address space");
 
     {
+        // Fork a new VM
         let mut forked = emu.fork();
 
-        for _ in 0..1_000_000 {
-            let mut tmp = [0u8; 4];
-            emu.memory.read_into_perms(VirtAddr(0x11190), &mut tmp,
-                Perm(PERM_EXEC)).unwrap(); //read entrypoint
-
-            print!("{:#02x?}\n", tmp);
-
-            //emu.memory.write_from(tmp, b"asdf").unwrap();
-            forked.memory.reset(&emu.memory);
-        }
+        // Execute intruction
+        let mut tmp = [0u8; 4];
+        emu.memory.read_into_perms(VirtAddr(0x11190), &mut tmp,
+            Perm(PERM_EXEC)).unwrap();
     }
 }
