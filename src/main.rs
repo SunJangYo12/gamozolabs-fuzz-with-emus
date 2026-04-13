@@ -328,8 +328,16 @@ impl Emulator {
         }
 
         //print!("{:#x?}\n", self.memory.cur_alc);
-
         Some(())
+    }
+
+    pub fn run(&mut self) {
+        // Fecth the current intruction
+        let mut tmp = [0u8; 4];
+        let pc = self.reg(Register::Pc);
+
+        self.memory.read_into_perms(VirtAddr(pc as usize), &mut tmp,
+            Perm(PERM_EXEC)).unwrap();
     }
 }
 
@@ -372,13 +380,8 @@ fn main() {
         },
     ]).expect("Failed to load test application into address space");
 
-    {
-        // Fork a new VM
-        let mut forked = emu.fork();
+    // Set the program entry point
+    emu.set_reg(Register::Pc, 0x11190);
 
-        // Execute intruction
-        let mut tmp = [0u8; 4];
-        emu.memory.read_into_perms(VirtAddr(0x11190), &mut tmp,
-            Perm(PERM_EXEC)).unwrap();
-    }
+    emu.run();
 }
