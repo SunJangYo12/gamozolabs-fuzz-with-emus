@@ -331,13 +331,18 @@ impl Emulator {
         Some(())
     }
 
-    pub fn run(&mut self) {
-        // Fecth the current intruction
-        let mut tmp = [0u8; 4];
-        let pc = self.reg(Register::Pc);
+    pub fn run(&mut self) -> Option<()> {
+        loop {
+            // Get the current program counter
+            let pc = self.reg(Register::Pc);
 
-        self.memory.read_into_perms(VirtAddr(pc as usize), &mut tmp,
-            Perm(PERM_EXEC)).unwrap();
+            // Fecth the current intruction
+            let mut tmp = [0u8; 4];
+
+            self.memory.read_into_perms(VirtAddr(pc as usize), &mut tmp,
+                Perm(PERM_EXEC))?;
+        }
+        Some(())
     }
 }
 
@@ -383,5 +388,5 @@ fn main() {
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x11190);
 
-    emu.run();
+    emu.run().expect("Failed to execute emulator");
 }
