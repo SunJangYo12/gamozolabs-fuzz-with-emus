@@ -42,7 +42,23 @@ pub struct Mmu {
     cur_alc: VirtAddr,
 }
 
+macro_rules! define_accessor {
+    ($ty:ty, $read:ident, $write:ident) => {
+        pub fn $read(&self, addr: VirtAddr) -> Option<$ty> {
+            let mut tmp = (0 as $ty).to_ne_bytes();
+            self.read_into(addr, &mut tmp)?;
+            Some(<$ty>::from_le_bytes(tmp))
+        }
+
+        pub fn $write(&mut self, addr: VirtAddr, val: $ty) -> Option<()> {
+            self.write_from(addr, &val.to_ne_bytes())
+        }
+    }
+}
+
 impl Mmu {
+    define_accessor!(u32, read_u32, write_u32);
+
     // Create a new memory space which can hold `size` bytes
     pub fn new(size: usize) -> Self {
         Mmu {
@@ -53,6 +69,7 @@ impl Mmu {
             cur_alc:      VirtAddr(0x10000),
         }
     }
+
     /// Fork from an existing MMU
     fn fork(&self) -> Self {
         let size = self.memory.len();
@@ -65,8 +82,6 @@ impl Mmu {
             cur_alc:      self.cur_alc.clone(),
         }
     }
-        
-
 
     /// Restores memory back to the original state (eg. restore all dirty
     /// blocks to the state of `other`)
