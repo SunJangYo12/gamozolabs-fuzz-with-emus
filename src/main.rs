@@ -176,18 +176,27 @@ impl Mmu {
     }        
 
     /// Read the memory at `addr` into `buf`
-    pub fn read_into(&self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+    /// This function checks to see if all bits in `exp_perms`are set in the
+    /// permissions bytes. If this is zero, we ignore permissions entirely.
+    pub fn read_into_perms(&self, addr: VirtAddr, buf: &mut [u8],
+                            exp_perms: Perm) -> Option<()> {
         let perms = self.permissions.get(addr.0..addr.0.checked_add(buf.len())?)?;
 
         // Check permissions
-        if !perms.iter().all(|x| (x.0 & PERM_READ) != 0) {
+        if exp_perms.0 != 0 &&
+                !perms.iter().all(|x| (x.0 & exp_perms.0) == exp_perms.0) {
             return None;
         }
 
         buf.copy_from_slice(
             self.memory.get(addr.0..addr.0.checked_add(buf.len())?)?);
         Some(())
-    }        
+    }
+
+    // Read the memory at `addr` into `buf`
+    pub fn read_into(&self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
+        self.read_into_perms(addr, buf, Perm(PERM_READ))
+    }
 }
 
 /// All the state of the emulated system
@@ -252,6 +261,8 @@ impl Emulator {
             ));
         }
 
+        //print!("{:#x?}\n", self.memory.cur_alc);
+
         Some(())
     }
 }
@@ -293,14 +304,16 @@ fn main() {
         },
     ]).expect("Failed to load test application into address space");
 
-
-    let tmp = emu.memory.allocate(4).unwrap();
-    emu.memory.write_from(tmp, b"asdf").unwrap();
-
     {
         let mut forked = emu.fork();
 
         for _ in 0..1_000_000 {
+            let mut tmp = [0u8; 4];
+            emu.memory.read_into_perms(VirtAddr(0x11190), &mut tmp,
+                Perm(PERM_EXEC)).unwrap(); //read entrypoint
+
+            print!("{:#02x?}\n", tmp);
+
             //emu.memory.write_from(tmp, b"asdf").unwrap();
             forked.memory.reset(&emu.memory);
         }
