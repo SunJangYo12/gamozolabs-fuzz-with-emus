@@ -286,8 +286,9 @@ pub enum Register {
     Pc,
 }
 
-impl From<u8> for Register {
-    fn from(val: u8) -> Self {
+/// Supaya cepat dari pada switch eg. 0->Ra, 1->Sp
+impl From<u32> for Register {
+    fn from(val: u32) -> Self {
         assert!(val < 32);
         unsafe {
             core::ptr::read_unaligned(&(val as usize) as
@@ -388,10 +389,18 @@ impl Emulator {
                                                     Perm(PERM_EXEC))?;
 
             // Extract the opcode from the intruction
-            let opcode = inst & 0b11111111;
+            let opcode = inst & 0b1111111;
             match opcode {
                 0b0110111 => {
                     // LUI
+                    let inst = Utype::from(inst);
+                    self.set_reg(inst.rd, inst.imm as i64 as u64);
+                }
+                0b0010111 => {
+                    // AUIPC
+                    let inst = Utype::from(inst);
+                    self.set_reg(inst.rd,
+                                 (inst.imm as i64 as u64).wrapping_add(pc));
                 }
                 _ => unimplemented!("Unhandle opcode {:#90b}\n", opcode),
             }
@@ -400,9 +409,19 @@ impl Emulator {
     }
 }
 
+#[derive(Debug)]
 struct Utype {
-    imm: i64,
+    imm: i32,
     rd:  Register,
+}
+
+impl From<u32> for Utype {
+    fn from(inst: u32) -> Self {
+        Utype {
+            imm: (inst & !0xfff) as i32,
+            rd:  Register::from((inst >> 7) & 0b11111),
+        }
+    }
 }
 
 /// Section information for a file

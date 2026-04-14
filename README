@@ -1,0 +1,3 @@
+sudo apt install binutils-riscv64-linux-gnu
+
+ricv...objdump -d test_app
