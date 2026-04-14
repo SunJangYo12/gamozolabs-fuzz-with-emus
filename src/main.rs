@@ -221,6 +221,21 @@ impl Mmu {
             exp_perms)?;
         Some(unsafe { core::ptr::read_unaligned(tmp.as_ptr() as *const T) })
     }
+
+    // Read a type `T` at `vaddr`
+    pub fn read<T: Primitive>(&mut self, addr: VirtAddr) -> Option<(T)> {
+        self.read_perms(addr, Perm(PERM_READ))
+    }
+
+    // Write a `val` to `addr`
+    pub fn write<T: Primitive>(&mut self, addr: VirtAddr,
+                                val: T) -> Option<()> {
+        let tmp = unsafe {
+            core::slice::from_raw_parts(&val as *const T as *const u8,
+                                        core::mem::size_of::<T>())
+        };
+        self.write_from(addr, tmp)
+    }
 }
 
 /// All the state of the emulated system
