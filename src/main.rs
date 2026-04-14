@@ -397,6 +397,9 @@ impl Emulator {
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
+
+            print!("Executing {:#x} {:b}\n", pc, opcode);
+
             match opcode {
                 0b0110111 => {
                     // LUI
