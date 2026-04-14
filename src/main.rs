@@ -402,6 +402,13 @@ impl Emulator {
                     self.set_reg(inst.rd,
                                  (inst.imm as i64 as u64).wrapping_add(pc));
                 }
+                0b1101111 => {
+                    // JAL
+                    let inst = Jtype::from(inst);
+                    self.set_reg(inst.rd, pc.wrapping_add(4));
+                    self.set_reg(Register::Pc,
+                                 pc.wrapping_add(inst.imm as i64 as u64));
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
@@ -409,6 +416,30 @@ impl Emulator {
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
         Some(())
+    }
+}
+
+#[derive(Debug)]
+struct Jtype {
+    imm: i32,
+    rd:  Register,
+}
+
+impl From<u32> for Jtype {
+    fn from(inst: u32) -> Self {
+        let imm20   = (inst >> 31) & 1;
+        let imm101  = (inst >> 21) & 0b111111111;
+        let imm11   = (inst >> 20) & 1;
+        let imm1912 = (inst >> 12) & 0b1111111;
+
+        let imm = (imm20 << 20) | (imm1912 << 12) | (imm11 << 11) |
+            (imm101 << 1);
+        let imm = ((imm as i32) << 11) >> 11;
+
+        Jtype {
+            imm: imm,
+            rd:  Register::from((inst >> 7) & 0b11111),
+        }
     }
 }
 
