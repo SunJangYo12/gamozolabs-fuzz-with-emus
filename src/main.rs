@@ -432,6 +432,59 @@ impl Emulator {
                     }
 
                 }
+                0b1100011 => {
+                    // We know it's an Btype
+                    let inst = Btype::from(inst);
+
+                    let rs1 = self.reg(inst.rs1);
+                    let rs2 = self.reg(inst.rs2);
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // BEQ
+                            if rs1 == rs2 {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        0b001 => {
+                            // BNE
+                            if rs1 != rs2 {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        0b100 => {
+                            // BLT
+                            if (rs1 as i64) < (rs2 as i64) {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        0b101 => {
+                            // BGE
+                            if (rs1 as i64) >= (rs2 as i64) {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        0b110 => {
+                            // BLTU
+                            if (rs1 as u64) < (rs2 as u64) {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        0b111 => {
+                            // BGEU
+                            if (rs1 as u64) >= (rs2 as u64) {
+                                self.set_reg(Register::Pc,
+                                    pc.wrapping_add(inst.imm as i64 as u64));
+                            }
+                        }
+                        _ => unimplemented!("Unexpected 0b1100011"),
+                    }
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
