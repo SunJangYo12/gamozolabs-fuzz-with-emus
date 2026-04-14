@@ -286,6 +286,16 @@ pub enum Register {
     Pc,
 }
 
+impl From<u8> for Register {
+    fn from(val: u8) -> Self {
+        assert!(val < 32);
+        unsafe {
+            core::ptr::read_unaligned(&(val as usize) as
+                                        *const usize as *const Register)
+        }
+    }
+}
+
 impl Emulator {
     /// Creates a new emulator with `size` bytes of memory
     pub fn new(size: usize) -> Self {
@@ -377,12 +387,23 @@ impl Emulator {
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))?;
 
-            print!("{:#x}\n", inst);
+            // Extract the opcode from the intruction
+            let opcode = inst & 0b11111111;
+            match opcode {
+                0b0110111 => {
+                    // LUI
+                }
+                _ => unimplemented!("Unhandle opcode {:#90b}\n", opcode),
+            }
         }
         Some(())
     }
 }
 
+struct Utype {
+    imm: i64,
+    rd:  Register,
+}
 
 /// Section information for a file
 pub struct Section {
