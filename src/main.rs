@@ -485,6 +485,80 @@ impl Emulator {
                         _ => unimplemented!("Unexpected 0b1100011"),
                     }
                 }
+                0b0000011 => {
+                    // We knwo it's an ITtype
+                    let inst = Itype::from(inst);
+
+                    // Compute the address
+                    let addr = VirtAddr(self.reg(inst.rs1)
+                        .wrapping_add(inst.imm as i64 as u64) as usize);
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // LB
+                            let mut tmp = [0u8; 1];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                i8::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        0b001 => {
+                            // LH
+                            let mut tmp = [0u8; 2];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                i16::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        0b010 => {
+                            // LW
+                            let mut tmp = [0u8; 4];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                i32::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        0b100 => {
+                            // LBU
+                            let mut tmp = [0u8; 1];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                u8::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        0b101 => {
+                            // LHU
+                            let mut tmp = [0u8; 2];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                u16::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        _ => unimplemented!("Unexpected 0b1100111"),
+                    }
+                }
+                0b0100011 => {
+                    // We knwo it's an STtype
+                    let inst = Stype::from(inst);
+
+                    // Compute the address
+                    let addr = VirtAddr(self.reg(inst.rs1)
+                        .wrapping_add(inst.imm as i64 as u64) as usize);
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // SB
+                            let val = self.reg(inst.rs2) as u8;
+                            self.memory.write(addr, val)?;
+                        }
+                        0b001 => {
+                            // SH
+                            let val = self.reg(inst.rs2) as u16;
+                            self.memory.write(addr, val)?;
+                        }
+                        0b010 => {
+                            // SW
+                            let val = self.reg(inst.rs2) as u32;
+                            self.memory.write(addr, val)?;
+                        }
+                        _ => unimplemented!("Unexpected 0b0100011"),
+                    }
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
@@ -495,6 +569,51 @@ impl Emulator {
     }
 }
 
+#[derive(Debug)]
+struct Rtype {
+    funct7: u32,
+    rs2:    Register,
+    rs1:    Register,
+    funct3: u32,
+    rd:     Register,
+}
+
+impl From<u32> for Rtype {
+    fn from(inst: u32) -> Self {
+        Rtype {
+            funct7: (inst >> 25) & 0b1111111,
+            rs2:    Register::from((inst >> 20) & 0b11111),
+            rs1:    Register::from((inst >> 15) & 0b11111),
+            funct3: (inst >> 12) & 0b111,
+            rd:     Register::from((inst >>  7) & 0b11111),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Stype {
+    imm: i32,
+    rs2:    Register,
+    rs1:    Register,
+    funct3: u32,
+}
+
+impl From<u32> for Stype {
+    fn from(inst: u32) -> Self {
+        let imm115 = (inst >> 25) &0b1111111;
+        let imm40  = (inst >>  7) &0b11111;
+
+        let imm = (imm115 << 5) | imm40;
+        let imm = ((imm as i32) << 20) >> 20;
+
+        Stype {
+            imm: imm,
+            rs2:    Register::from((inst >> 20) & 0b11111),
+            rs1:    Register::from((inst >> 15) & 0b11111),
+            funct3: (inst >> 12) & 0b111,
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Btype {
@@ -522,7 +641,6 @@ impl From<u32> for Btype {
         }
     }
 }
-
 
 #[derive(Debug)]
 struct Itype {
