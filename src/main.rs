@@ -559,6 +559,49 @@ impl Emulator {
                         _ => unimplemented!("Unexpected 0b0100011"),
                     }
                 }
+                0b0010011 => {
+                    // We know it's an Itype
+                    let inst = Itype::from(inst);
+
+                    let rs1 = self.reg(inst.rs1);
+                    let imm = inst.imm as i64 as u64;
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // ADDI
+                            self.set_reg(inst.rd, rs1.wrapping_add(imm));
+                        }
+                        0b010 => {
+                            // SLTI
+                            if (rs1 as i64) < (imm as i64) {
+                                self.set_reg(inst.rd, 1);
+                            } else {
+                                self.set_reg(inst.rd, 0);
+                            }
+                        }
+                        0b011 => {
+                            // SLTIU
+                            if (rs1 as u64) < (imm as u64) {
+                                self.set_reg(inst.rd, 1);
+                            } else {
+                                self.set_reg(inst.rd, 0);
+                            }
+                        }
+                        0b100 => {
+                            // XORI
+                            self.set_reg(inst.rd, rs1 ^ imm);
+                        }
+                        0b110 => {
+                            // ORI
+                            self.set_reg(inst.rd, rs1 | imm);
+                        }
+                        0b111 => {
+                            // ANDI
+                            self.set_reg(inst.rd, rs1 & imm);
+                        }
+                        _ => unimplemented!("Unexpected 0b0010011"),
+                    }
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
