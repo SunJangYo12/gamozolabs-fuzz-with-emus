@@ -374,12 +374,10 @@ impl Emulator {
         loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
+            let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
+                                                    Perm(PERM_EXEC))?;
 
-            // Fecth the current intruction
-            let mut tmp = [0u8; 4];
-
-            self.memory.read_into_perms(VirtAddr(pc as usize), &mut tmp,
-                Perm(PERM_EXEC))?;
+            print!("{:#x}\n", inst);
         }
         Some(())
     }
