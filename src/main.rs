@@ -402,8 +402,11 @@ impl Emulator {
                     self.set_reg(inst.rd,
                                  (inst.imm as i64 as u64).wrapping_add(pc));
                 }
-                _ => unimplemented!("Unhandle opcode {:#90b}\n", opcode),
+                _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
+
+            // Update PC to the next intruction
+            self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
         Some(())
     }
