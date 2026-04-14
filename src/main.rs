@@ -602,7 +602,119 @@ impl Emulator {
                             // ANDI
                             self.set_reg(inst.rd, rs1 & imm);
                         }
-                        _ => unimplemented!("Unexpected 0b0010011"),
+                        0b001 => {
+                            let mode = (inst.imm >> 6) & 0b111111;
+
+                            match mode {
+                                0b000000 => {
+                                    // SLLI
+                                    let shamt = inst.imm & 0b111111;
+                                    self.set_reg(inst.rd, rs1 << shamt);
+                                }
+                                _ => unimplemented!("Unexpected 0b0010011"),
+                            }
+                        }
+                        0b101 => {
+                            let mode = (inst.imm >> 6) & 0b111111;
+
+                            match mode {
+                                0b000000 => {
+                                    // SRLI
+                                    let shamt = inst.imm & 0b111111;
+                                    self.set_reg(inst.rd, rs1 >> shamt);
+                                }
+                                0b010000 => {
+                                    // SRAI
+                                    let shamt = inst.imm & 0b111111;
+                                    self.set_reg(inst.rd,
+                                        ((rs1 as i64) >> shamt) as u64);
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                0b0110011 => {
+                    // We know it's an Rtype
+                    let inst = Rtype::from(inst);
+
+                    let rs1 = self.reg(inst.rs1);
+                    let rs2 = self.reg(inst.rs2);
+
+                    match (inst.funct7, inst.funct3) {
+                        (0b0000000, 0b000) => {
+                            // ADD
+                            self.set_reg(inst.rd, rs1.wrapping_add(rs2));
+                        }
+                        (0b0100000, 0b000) => {
+                            // SUB
+                            self.set_reg(inst.rd, rs1.wrapping_sub(rs2));
+                        }
+                        (0b0000000, 0b001) => {
+                            // SLL
+                            let shamt = rs2 & 0b111111;
+                            self.set_reg(inst.rd, rs1 << shamt);
+                        }
+                        (0b0000000, 0b010) => {
+                            // SLT
+                            if (rs1 as i64) < (rs2 as i64) {
+                                self.set_reg(inst.rd, 1);
+                            } else {
+                                self.set_reg(inst.rd, 0);
+                            }
+                        }
+                        (0b0000000, 0b011) => {
+                            // SLTU
+                            if (rs1 as u64) < (rs2 as u64) {
+                                self.set_reg(inst.rd, 1);
+                            } else {
+                                self.set_reg(inst.rd, 0);
+                            }
+                        }
+                        (0b0000000, 0b100) => {
+                            // XOR
+                            self.set_reg(inst.rd, rs1 ^ rs2);
+                        }
+                        (0b0000000, 0b101) => {
+                            // SRL
+                            let shamt = rs2 & 0b111111;
+                            self.set_reg(inst.rd, rs1 >> shamt);
+                        }
+                        (0b0100000, 0b101) => {
+                            // SRA
+                            let shamt = rs2 & 0b111111;
+                            self.set_reg(inst.rd,
+                                ((rs1 as i64) >> shamt) as u64);
+                        }
+                        (0b0000000, 0b110) => {
+                            // OR
+                            self.set_reg(inst.rd, rs1 | rs2);
+                        }
+                        (0b0000000, 0b111) => {
+                            // AND
+                            self.set_reg(inst.rd, rs1 & rs2);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                0b0001111 => {
+                    let inst = Itype::from(inst);
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // FENCE
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                0b1110011 => {
+                    if inst == 0b00000000000000000000000001110011 {
+                        // ECALL
+                    } else if inst == 0b00000000000100000000000001110011 {
+                        // EBREAK
+                    } else {
+                        unreachable!()
                     }
                 }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
