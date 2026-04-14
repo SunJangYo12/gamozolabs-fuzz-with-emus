@@ -1,5 +1,21 @@
 use std::path::Path;
 
+pub unsafe trait Primitive: Default + Clone + Copy {}
+unsafe impl Primitive for u8    {}
+unsafe impl Primitive for u16   {}
+unsafe impl Primitive for u32   {}
+unsafe impl Primitive for u64   {}
+unsafe impl Primitive for u128  {}
+unsafe impl Primitive for usize {}
+
+unsafe impl Primitive for i8    {}
+unsafe impl Primitive for i16   {}
+unsafe impl Primitive for i32   {}
+unsafe impl Primitive for i64   {}
+unsafe impl Primitive for i128  {}
+unsafe impl Primitive for isize {}
+
+
 const PERM_READ:  u8 = 1 << 0;
 const PERM_WRITE: u8 = 1 << 1;
 const PERM_EXEC:  u8 = 1 << 2;
@@ -42,23 +58,7 @@ pub struct Mmu {
     cur_alc: VirtAddr,
 }
 
-macro_rules! define_accessor {
-    ($ty:ty, $read:ident, $write:ident) => {
-        pub fn $read(&self, addr: VirtAddr) -> Option<$ty> {
-            let mut tmp = (0 as $ty).to_ne_bytes();
-            self.read_into(addr, &mut tmp)?;
-            Some(<$ty>::from_le_bytes(tmp))
-        }
-
-        pub fn $write(&mut self, addr: VirtAddr, val: $ty) -> Option<()> {
-            self.write_from(addr, &val.to_ne_bytes())
-        }
-    }
-}
-
 impl Mmu {
-    define_accessor!(u32, read_u32, write_u32);
-
     // Create a new memory space which can hold `size` bytes
     pub fn new(size: usize) -> Self {
         Mmu {
@@ -211,6 +211,15 @@ impl Mmu {
     // Read the memory at `addr` into `buf`
     pub fn read_into(&self, addr: VirtAddr, buf: &mut [u8]) -> Option<()> {
         self.read_into_perms(addr, buf, Perm(PERM_READ))
+    }
+
+    // Read a type `T` at `vaddr` excepting `perms`
+    pub fn read_perms<T: Primitive>(&mut self, addr: VirtAddr,
+                                    exp_perms: Perm) -> Option<T> {
+        let mut tmp = [0u8; 16];
+        self.read_into_perms(addr, &mut tmp[..core::mem::size_of::<T>()],
+            exp_perms)?;
+        Some(unsafe { core::ptr::read_unaligned(tmp.as_ptr() as *const T) })
     }
 }
 
