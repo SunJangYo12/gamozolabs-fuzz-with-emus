@@ -409,6 +409,14 @@ impl Emulator {
                     self.set_reg(Register::Pc,
                                  pc.wrapping_add(inst.imm as i64 as u64));
                 }
+                0b1100111 => {
+                    // JALR
+                    let inst = Itype::from(inst);
+                    let target = self.reg(inst.rs1).wrapping_add(
+                            inst.imm as i64 as u64);
+                    self.set_reg(inst.rd, pc.wrapping_add(4));
+                    self.set_reg(Register::Pc, target);
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
@@ -416,6 +424,28 @@ impl Emulator {
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
         Some(())
+    }
+}
+
+
+#[derive(Debug)]
+struct Itype {
+    imm:    i32,
+    rs1:    Register,
+    funct3: u32,
+    rd:     Register,
+}
+
+impl From<u32> for Itype {
+    fn from(inst: u32) -> Self {
+        let imm = (inst as i32) >> 20;
+
+        Itype {
+            imm:    imm,
+            rs1:    Register::from((inst >> 15) & 0b11111),
+            funct3: (inst >> 12) & 0b111,
+            rd:     Register::from((inst >>  7) & 0b11111),
+        }
     }
 }
 
