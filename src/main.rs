@@ -248,7 +248,7 @@ pub struct Emulator {
 }
 
 /// 64-bit RISC-V registers
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(usize)]
 pub enum Register {
     Zero = 0,
@@ -326,12 +326,19 @@ impl Emulator {
 
     /// Get a register from the guest
     pub fn reg(&self, register: Register) -> u64 {
-        self.registers[register as usize]
+        if register != Register::Zero {
+            self.registers[register as usize]
+        }
+        else {
+            0
+        }
     }
 
     /// Set a register from the guest
     pub fn set_reg(&mut self, register: Register, val: u64) {
-        self.registers[register as usize] = val;
+        if register != Register::Zero {
+            self.registers[register as usize] = val;
+        }
     }
     
 
@@ -410,12 +417,20 @@ impl Emulator {
                                  pc.wrapping_add(inst.imm as i64 as u64));
                 }
                 0b1100111 => {
-                    // JALR
+                    // We know it's an Itype
                     let inst = Itype::from(inst);
-                    let target = self.reg(inst.rs1).wrapping_add(
-                            inst.imm as i64 as u64);
-                    self.set_reg(inst.rd, pc.wrapping_add(4));
-                    self.set_reg(Register::Pc, target);
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // JALR
+                            let target = self.reg(inst.rs1).wrapping_add(
+                                    inst.imm as i64 as u64);
+                            self.set_reg(inst.rd, pc.wrapping_add(4));
+                            self.set_reg(Register::Pc, target);
+                        }
+                        _ => unimplemented!("Unexpected 0b1100111"),
+                    }
+
                 }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
@@ -424,6 +439,34 @@ impl Emulator {
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
         Some(())
+    }
+}
+
+
+#[derive(Debug)]
+struct Btype {
+    imm:    i32,
+    rs2:    Register,
+    rs1:    Register,
+    funct3: u32,
+}
+
+impl From<u32> for Btype {
+    fn from(inst: u32) -> Self {
+        let imm12  = (inst >> 31) & 1;
+        let imm105 = (inst >> 25) & 0b111111;
+        let imm41  = (inst >>  8) & 0b1111;
+        let imm11  = (inst >>  7) & 1;
+
+        let imm = (imm12 << 12) | (imm11 << 11) | (imm105 << 5) | (imm41 << 1);
+        let imm = ((imm as i32) << 19) >> 19;
+
+        Btype {
+            imm:    imm,
+            rs2:    Register::from((inst >> 20) & 0b11111),
+            rs1:    Register::from((inst >> 15) & 0b11111),
+            funct3: (inst >> 12) & 0b111,
+        }
     }
 }
 
