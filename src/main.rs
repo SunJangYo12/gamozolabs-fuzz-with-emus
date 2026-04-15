@@ -519,6 +519,13 @@ impl Emulator {
                             self.set_reg(inst.rd,
                                 i32::from_le_bytes(tmp) as i64 as u64);
                         }
+                        0b011 => {
+                            // LD
+                            let mut tmp = [0u8; 8];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                i64::from_le_bytes(tmp) as i16 as u64);
+                        }
                         0b100 => {
                             // LBU
                             let mut tmp = [0u8; 1];
@@ -532,6 +539,13 @@ impl Emulator {
                             self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 u16::from_le_bytes(tmp) as i64 as u64);
+                        }
+                        0b110 => {
+                            // LWU
+                            let mut tmp = [0u8; 4];
+                            self.memory.read_into(addr, &mut tmp)?;
+                            self.set_reg(inst.rd,
+                                u32::from_le_bytes(tmp) as i64 as u64);
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
