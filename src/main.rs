@@ -3,7 +3,7 @@ pub mod mmu;
 pub mod emulator;
 
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
-use emulator::{Emulator, Register};
+use emulator::{Emulator, Register, VmExit};
 
 fn main() {
     let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
@@ -42,11 +42,11 @@ fn main() {
         .expect("Failed to allocated stack");
     emu.set_reg(Register::Sp, stack.0 as u64 + 32 * 1024);
 
-    // Set Up null terminated arg vectors
+    // Set Up the program name
     let argv = emu.memory.allocate(8)
-        .expect("Failed to allocated argv");
+        .expect("Failed to allocated program name");
     emu.memory.write_from(argv, b"test\0")
-        .expect("Failed to null-terminated argv");
+        .expect("Failed to write program name");
 
     macro_rules! push {
         ($expr:expr) => {
@@ -58,13 +58,37 @@ fn main() {
         }
     }
 
+    // Set up the initial program stack state
     push!(0u64);   // Auxp
     push!(0u64);   // Envp
     push!(0u64);   // Argv end
     push!(argv.0); // Argv
     push!(1u64); // Argc
 
-    emu.run().expect("Failed to execute emulator");
+    loop {
+        let vmexit = emu.run().expect("Failed to execute emulator");
+
+        match vmexit {
+            VmExit::Syscall => {
+                // Get the syscall number
+                let num = emu.reg(Register::A7);
+
+                match num {
+                    96 => {
+                        // set_tid address(), jutst return the TID
+                        emu.set_reg(Register::A0, 1337);
+                    }
+                    _ => {
+                        panic!("Unhandled syscall {}\n", num);
+                    }
+                }
+
+                // Advance PC
+                let pc = emu.reg(Register::Pc);
+                emu.set_reg(Register::Pc, pc.wrapping_add(4));
+            }
+        }
+    }
 }
 
 

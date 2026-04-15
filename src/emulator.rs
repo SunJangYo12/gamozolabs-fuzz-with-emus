@@ -53,6 +53,11 @@ impl From<u32> for Register {
     }
 }
 
+/// Reasons why VM exited
+pub enum VmExit {
+    Syscall,
+}
+
 /// A R-type intruction
 #[derive(Debug)]
 struct Rtype {
@@ -246,7 +251,7 @@ impl Emulator {
         }
     }
 
-    pub fn run(&mut self) -> Option<()> {
+    pub fn run(&mut self) -> Option<(VmExit)> {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
@@ -635,7 +640,7 @@ impl Emulator {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
-                        panic!("SYSCALL");
+                        return Some(VmExit::Syscall);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
                     } else {
@@ -696,7 +701,6 @@ impl Emulator {
             // Update PC to the next intruction
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
-        Some(())
     }
 }
 
