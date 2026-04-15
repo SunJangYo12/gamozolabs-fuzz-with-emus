@@ -291,8 +291,9 @@ impl From<u32> for Register {
     fn from(val: u32) -> Self {
         assert!(val < 32);
         unsafe {
-            core::ptr::read_unaligned(&(val as usize) as
-                                        *const usize as *const Register)
+            core::ptr::read_unaligned(&(val as usize) as //ambil alamat dimemori
+                                        *const usize as  //jadi poointer
+                                        *const Register) //reinterpret pointer
         }
     }
 }
@@ -901,5 +902,28 @@ fn main() {
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x11190);
 
+    // Set up a stack
+    let stack = emu.memory.allocate(32 * 1024)
+        .expect("Failed to allocated stack");
+    emu.set_reg(Register::Sp, stack.0 as u64 + 32 * 1024);
+
+    macro_rules! push {
+        ($expr:expr) => {
+            let sp = emu.reg(Register::Sp) - 
+                core::mem::size_of_val(&$expr) as u64;
+            emu.memory.write(VirtAddr(sp as usize), $expr)
+                .expect("Push failed");
+            emu.set_reg(Register::Sp, sp);
+        }
+    }
+
+    push!(0u64); // Argc
+    push!(0u64); // Argv
+    push!(0u64); // Envp
+    push!(0u64); // Auxp
+
     emu.run().expect("Failed to execute emulator");
 }
+
+
+
