@@ -560,6 +560,11 @@ impl Emulator {
                             let val = self.reg(inst.rs2) as u32;
                             self.memory.write(addr, val)?;
                         }
+                        0b011 => {
+                            // SD
+                            let val = self.reg(inst.rs2) as u64;
+                            self.memory.write(addr, val)?;
+                        }
                         _ => unimplemented!("Unexpected 0b0100011"),
                     }
                 }
