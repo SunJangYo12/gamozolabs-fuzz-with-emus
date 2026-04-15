@@ -737,6 +737,54 @@ impl Emulator {
                         unreachable!()
                     }
                 }
+                0b0011011 => {
+                    // We know it's an Itype
+                    let inst = Itype::from(inst);
+
+                    let rs1 = self.reg(inst.rs1) as u32;
+                    let imm = inst.imm as u32;
+
+                    match inst.funct3 {
+                        0b000 => {
+                            // ADDIW
+                            self.set_reg(inst.rd,
+                                rs1.wrapping_add(imm) as i32 as i64 as u64);
+                        }
+                        0b001 => {
+                            let mode = (inst.imm >> 5) & 0b1111111;
+
+                            match mode {
+                                0b0000000 => {
+                                    // SLLIW
+                                    let shamt = inst.imm & 0b11111;
+                                    self.set_reg(inst.rd,
+                                        (rs1 << shamt) as i32 as i64 as u64);
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        0b101 => {
+                            let mode = (inst.imm >> 6) & 0b111111;
+
+                            match mode {
+                                0b000000 => {
+                                    // SRLIW
+                                    let shamt = inst.imm & 0b11111;
+                                    self.set_reg(inst.rd,
+                                        (rs1 >> shamt) as i32 as i64 as u64);
+                                }
+                                0b010000 => {
+                                    // SRAIW
+                                    let shamt = inst.imm & 0b11111;
+                                    self.set_reg(inst.rd,
+                                        ((rs1 as i32) >> shamt) as i64 as u64);
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
