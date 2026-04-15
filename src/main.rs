@@ -1,20 +1,7 @@
+pub mod primitive;
+
 use std::path::Path;
-
-pub unsafe trait Primitive: Default + Clone + Copy {}
-unsafe impl Primitive for u8    {}
-unsafe impl Primitive for u16   {}
-unsafe impl Primitive for u32   {}
-unsafe impl Primitive for u64   {}
-unsafe impl Primitive for u128  {}
-unsafe impl Primitive for usize {}
-
-unsafe impl Primitive for i8    {}
-unsafe impl Primitive for i16   {}
-unsafe impl Primitive for i32   {}
-unsafe impl Primitive for i64   {}
-unsafe impl Primitive for i128  {}
-unsafe impl Primitive for isize {}
-
+use primitive::Primitive;
 
 const PERM_READ:  u8 = 1 << 0;
 const PERM_WRITE: u8 = 1 << 1;
