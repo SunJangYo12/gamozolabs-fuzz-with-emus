@@ -390,7 +390,7 @@ impl Emulator {
     }
 
     pub fn run(&mut self) -> Option<()> {
-        loop {
+        'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
@@ -419,6 +419,7 @@ impl Emulator {
                     self.set_reg(inst.rd, pc.wrapping_add(4));
                     self.set_reg(Register::Pc,
                                  pc.wrapping_add(inst.imm as i64 as u64));
+                    continue 'next_inst;
                 }
                 0b1100111 => {
                     // We know it's an Itype
@@ -430,8 +431,8 @@ impl Emulator {
                             let target = self.reg(inst.rs1).wrapping_add(
                                     inst.imm as i64 as u64);
                             self.set_reg(inst.rd, pc.wrapping_add(4));
-                            print!("Target {:#x?}\n", target);
                             self.set_reg(Register::Pc, target);
+                            continue 'next_inst;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
@@ -450,6 +451,7 @@ impl Emulator {
                             if rs1 == rs2 {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         0b001 => {
@@ -457,6 +459,7 @@ impl Emulator {
                             if rs1 != rs2 {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         0b100 => {
@@ -464,6 +467,7 @@ impl Emulator {
                             if (rs1 as i64) < (rs2 as i64) {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         0b101 => {
@@ -471,6 +475,7 @@ impl Emulator {
                             if (rs1 as i64) >= (rs2 as i64) {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         0b110 => {
@@ -478,6 +483,7 @@ impl Emulator {
                             if (rs1 as u64) < (rs2 as u64) {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         0b111 => {
@@ -485,6 +491,7 @@ impl Emulator {
                             if (rs1 as u64) >= (rs2 as u64) {
                                 self.set_reg(Register::Pc,
                                     pc.wrapping_add(inst.imm as i64 as u64));
+                                continue 'next_inst;
                             }
                         }
                         _ => unimplemented!("Unexpected 0b1100011"),
@@ -939,9 +946,9 @@ struct Jtype {
 impl From<u32> for Jtype {
     fn from(inst: u32) -> Self {
         let imm20   = (inst >> 31) & 1;
-        let imm101  = (inst >> 21) & 0b111111111;
+        let imm101  = (inst >> 21) & 0b1111111111;
         let imm11   = (inst >> 20) & 1;
-        let imm1912 = (inst >> 12) & 0b1111111;
+        let imm1912 = (inst >> 12) & 0b11111111;
 
         let imm = (imm20 << 20) | (imm1912 << 12) | (imm11 << 11) |
             (imm101 << 1);
@@ -1018,7 +1025,8 @@ fn main() {
     // Set Up null terminated arg vectors
     let argv = emu.memory.allocate(8)
         .expect("Failed to allocated argv");
-    emu.memory.write(argv, 0u64).expect("Failed to null-terminated argv");
+    emu.memory.write_from(argv, b"test\0")
+        .expect("Failed to null-terminated argv");
 
     macro_rules! push {
         ($expr:expr) => {
@@ -1030,10 +1038,11 @@ fn main() {
         }
     }
 
-    push!(0u64);   // Argc
+    push!(0u64);   // Auxp
+    push!(0u64);   // Envp
+    push!(0u64);   // Argv end
     push!(argv.0); // Argv
-    push!(argv.0); // Envp
-    push!(argv.0); // Auxp
+    push!(1u64); // Argc
 
     emu.run().expect("Failed to execute emulator");
 }
