@@ -770,6 +770,7 @@ impl Emulator {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
+                        panic!("SYSCALL");
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
                     } else {
@@ -1013,6 +1014,11 @@ fn main() {
         .expect("Failed to allocated stack");
     emu.set_reg(Register::Sp, stack.0 as u64 + 32 * 1024);
 
+    // Set Up null terminated arg vectors
+    let argv = emu.memory.allocate(8)
+        .expect("Failed to allocated argv");
+    emu.memory.write(argv, 0u64).expect("Failed to null-terminated argv");
+
     macro_rules! push {
         ($expr:expr) => {
             let sp = emu.reg(Register::Sp) - 
@@ -1023,10 +1029,10 @@ fn main() {
         }
     }
 
-    push!(0u64); // Argc
-    push!(0u64); // Argv
-    push!(0u64); // Envp
-    push!(0u64); // Auxp
+    push!(0u64);   // Argc
+    push!(argv.0); // Argv
+    push!(argv.0); // Envp
+    push!(argv.0); // Auxp
 
     emu.run().expect("Failed to execute emulator");
 }
