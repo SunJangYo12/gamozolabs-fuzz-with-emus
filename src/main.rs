@@ -430,6 +430,7 @@ impl Emulator {
                             let target = self.reg(inst.rs1).wrapping_add(
                                     inst.imm as i64 as u64);
                             self.set_reg(inst.rd, pc.wrapping_add(4));
+                            print!("Target {:#x?}\n", target);
                             self.set_reg(Register::Pc, target);
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
@@ -524,7 +525,7 @@ impl Emulator {
                             let mut tmp = [0u8; 8];
                             self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
-                                i64::from_le_bytes(tmp) as i16 as u64);
+                                i64::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b100 => {
                             // LBU
