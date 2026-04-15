@@ -718,6 +718,45 @@ impl Emulator {
                         _ => unreachable!(),
                     }
                 }
+                0b0111011 => {
+                    // We know it's an Rtype
+                    let inst = Rtype::from(inst);
+
+                    let rs1 = self.reg(inst.rs1) as u32;
+                    let rs2 = self.reg(inst.rs2) as u32;
+
+                    match (inst.funct7, inst.funct3) {
+                        (0b0000000, 0b000) => {
+                            // ADDW
+                            self.set_reg(inst.rd,
+                                rs1.wrapping_add(rs2) as i32 as i64 as u64);
+                        }
+                        (0b0100000, 0b000) => {
+                            // SUBW
+                            self.set_reg(inst.rd,
+                                rs1.wrapping_sub(rs2) as i32 as i64 as u64);
+                        }
+                        (0b0000000, 0b001) => {
+                            // SLLW
+                            let shamt = rs2 & 0b11111;
+                            self.set_reg(inst.rd,
+                                (rs1 << shamt) as i32 as i64 as u64);
+                        }
+                        (0b0000000, 0b101) => {
+                            // SRLW
+                            let shamt = rs2 & 0b11111;
+                            self.set_reg(inst.rd,
+                                (rs1 >> shamt) as i32 as i64 as u64);
+                        }
+                        (0b0100000, 0b101) => {
+                            // SRAW
+                            let shamt = rs2 & 0b11111;
+                            self.set_reg(inst.rd,
+                                ((rs1 as i32) >> shamt) as i64 as u64);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 0b0001111 => {
                     let inst = Itype::from(inst);
 
