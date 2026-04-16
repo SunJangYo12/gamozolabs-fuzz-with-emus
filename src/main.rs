@@ -40,11 +40,13 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let buf: usize = emu.memory.read(VirtAddr(ptr + 0))?;
                 let len: usize = emu.memory.read(VirtAddr(ptr + 8))?;
 
-                print!("Buf {:x?} {:x?}\n", buf, len);
-
                 // Look at the buffer!
                 let data = emu.memory.peek_perms(VirtAddr(buf), len,
                     Perm(PERM_READ))?;
+
+                if let Ok(st) = core::str::from_utf8(data) {
+                    print!("{}", st);
+                }
             }
             Ok(())
         }
