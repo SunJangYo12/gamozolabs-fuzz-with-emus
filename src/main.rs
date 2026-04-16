@@ -5,6 +5,45 @@ pub mod emulator;
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit};
 
+fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
+    // Get the syscall number
+    let num = emu.reg(Register::A7);
+
+    match num {
+        96 => {
+            // set_tid address(), jutst return the TID
+            emu.set_reg(Register::A0, 1337);
+            Ok(())
+        }
+        29 => {
+            // ioctl()
+            emu.set_reg(Register::A0, !0);
+            Ok(())
+        }
+        66 => {
+            // writev(). See man writev
+            let fd     = emu.reg(Register::A0);
+            let iov    = emu.reg(Register::A1);
+            let iovcnt = emu.reg(Register::A2);
+
+            for idx in 0..iovcnt {
+                // Compute the pointer to the IO vector entry
+                // corresponding to this index and validate that it
+                // will not overflow pointer size for the size of
+                // the `_iovec`
+                let ptr = 16u64.checked_mul(idx)
+                    .and_then(|x| x.checked_add(iov))
+                    .and_then(|x| x.checked_add(15))
+                    .ok_or(VmExit::SyscallIntegerOverflow)?;
+            }
+            Ok(())
+        }
+        _ => {
+            panic!("Unhandled syscall {}\n", num);
+        }
+    }
+}
+
 fn main() {
     let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
 
@@ -65,30 +104,23 @@ fn main() {
     push!(argv.0); // Argv
     push!(1u64); // Argc
 
-    loop {
+    let vmexit = loop {
         let vmexit = emu.run().expect("Failed to execute emulator");
 
         match vmexit {
             VmExit::Syscall => {
-                // Get the syscall number
-                let num = emu.reg(Register::A7);
-
-                match num {
-                    96 => {
-                        // set_tid address(), jutst return the TID
-                        emu.set_reg(Register::A0, 1337);
-                    }
-                    _ => {
-                        panic!("Unhandled syscall {}\n", num);
-                    }
+                if let Err(vmexit) = handle_syscall(&mut emu) {
+                    break vmexit;
                 }
 
                 // Advance PC
                 let pc = emu.reg(Register::Pc);
                 emu.set_reg(Register::Pc, pc.wrapping_add(4));
             }
+            _ => break vmexit,
         }
-    }
+    };
+    print!("VM exited with {:?}\n", vmexit);
 }
 
 

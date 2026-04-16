@@ -54,8 +54,11 @@ impl From<u32> for Register {
 }
 
 /// Reasons why VM exited
+#[derive(Clone, Copy, Debug)]
 pub enum VmExit {
+    /// The VM exited due to a syscall intruction
     Syscall,
+    SyscallIntegerOverflow,
 }
 
 /// A R-type intruction
