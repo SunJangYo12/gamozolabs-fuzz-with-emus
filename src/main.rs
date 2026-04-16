@@ -26,6 +26,12 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let iov    = emu.reg(Register::A1);
             let iovcnt = emu.reg(Register::A2);
 
+            // We currently only handle stdout and stderr
+            if fd != 1 && fd != 2 {
+                emu.set_reg(Register::A0, !0);
+                return Ok(());
+            }
+
             let mut bytes_written = 0;
 
             for idx in 0..iovcnt {
