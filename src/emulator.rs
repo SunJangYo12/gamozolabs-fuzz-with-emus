@@ -58,7 +58,13 @@ impl From<u32> for Register {
 pub enum VmExit {
     /// The VM exited due to a syscall intruction
     Syscall,
+
+    /// An integer overflow occured during a syscall due to bad supplied
+    /// arguments by the program
     SyscallIntegerOverflow,
+
+    /// An access of `VirtAddr` of `usize` bytes failed
+    ReadFault(VirtAddr, usize),
 }
 
 /// A R-type intruction

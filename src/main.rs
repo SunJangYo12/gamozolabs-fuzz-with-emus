@@ -34,7 +34,12 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let ptr = 16u64.checked_mul(idx)
                     .and_then(|x| x.checked_add(iov))
                     .and_then(|x| x.checked_add(15))
-                    .ok_or(VmExit::SyscallIntegerOverflow)?;
+                    .ok_or(VmExit::SyscallIntegerOverflow)? as usize;
+
+                let buf: u64 = emu.memory.read(VirtAddr(ptr + 0))
+                    .ok_or(VmExit::ReadFault(VirtAddr(ptr + 0), 8))?;
+                let len: u64 = emu.memory.read(VirtAddr(ptr + 8))
+                    .ok_or(VmExit::ReadFault(VirtAddr(ptr + 8), 8))?;
             }
             Ok(())
         }
