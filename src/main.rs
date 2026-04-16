@@ -2,7 +2,9 @@ pub mod primitive;
 pub mod mmu;
 pub mod emulator;
 
-use std::time::Instant;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicU64, Ordering};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit};
 
@@ -76,6 +78,35 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     }
 }
 
+#[derive(Default)]
+/// Statistic during fuzzing
+struct Statistics {
+    fuzz_cases: AtomicU64,
+}
+
+fn worker(mut emu: Emulator, original: Arc<Emulator>, stats: Arc<Statistics>) {
+    loop {
+        emu.reset(&*original);
+
+        let vmexit = loop {
+            let vmexit = emu.run().expect_err("Failed to execute emulator");
+
+            match vmexit {
+                VmExit::Syscall => {
+                    if let Err(vmexit) = handle_syscall(&mut emu) {
+                        break vmexit;
+                    }
+
+                    // Advance PC
+                    let pc = emu.reg(Register::Pc);
+                    emu.set_reg(Register::Pc, pc.wrapping_add(4));
+                }
+                _ => break vmexit,
+            }
+        };
+    }
+}
+
 fn main() {
     let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
 
@@ -136,38 +167,33 @@ fn main() {
     push!(argv.0); // Argv
     push!(1u64); // Argc
 
-    // Now, fork the VM
-    let mut worker = emu.fork();
-
     // Start a timer
     let start = Instant::now();
 
-    for fuzz_cases in 1u64.. {
-        worker.reset(&emu);
+    // Wrap the original emulator in an `Arc`
+    let emu = Arc::new(emu);
 
-        let vmexit = loop {
-            let vmexit = worker.run().expect_err("Failed to execute emulator");
+    // Create a new stats structure
+    let stats = Arc::new(Statistics::default());
 
-            match vmexit {
-                VmExit::Syscall => {
-                    if let Err(vmexit) = handle_syscall(&mut worker) {
-                        break vmexit;
-                    }
+    for _ in 0..4 {
+        let new_emu = emu.fork();
+        let stats   = stats.clone();
+        let parent  = emu.clone();
 
-                    // Advance PC
-                    let pc = worker.reg(Register::Pc);
-                    worker.set_reg(Register::Pc, pc.wrapping_add(4));
-                }
-                _ => break vmexit,
-            }
-        };
-        //print!("VM exited with {:#x?}\n", vmexit);
+        std::thread::spawn(move || {
+            worker(new_emu, parent, stats);
+        });
+    }
 
-        if fuzz_cases % 6000 == 0 { //orig & 0xffff
-            let elapsed = start.elapsed().as_secs_f64();
-            print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
-                elapsed, fuzz_cases, fuzz_cases as f64 / elapsed);
-        }
+    loop {
+        std::thread::sleep(Duration::from_millis(1000));
+
+        let elapsed = start.elapsed().as_secs_f64();
+        let fuzz_cases = stats.fuzz_cases.load(Ordering::Relaxed);
+
+        print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
+            elapsed, fuzz_cases, fuzz_cases as f64 / elapsed);
     }
 }
 
