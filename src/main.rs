@@ -183,7 +183,7 @@ fn main() {
     // Create a new stats structure
     let stats = Arc::new(Statistics::default());
 
-    for _ in 0..4 {
+    for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
@@ -199,6 +199,7 @@ fn main() {
     // Save the time stamp of start of execution
     let start_cycles = rdtsc();
 
+    let mut last_cases = 0;
     loop {
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -206,7 +207,9 @@ fn main() {
         let fuzz_cases = stats.fuzz_cases.load(Ordering::Relaxed);
 
         print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
-            elapsed, fuzz_cases, fuzz_cases as f64 / elapsed);
+            elapsed, fuzz_cases, fuzz_cases - last_cases);
+
+        last_cases = fuzz_cases;
     }
 }
 
