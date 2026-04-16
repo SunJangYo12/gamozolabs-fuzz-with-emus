@@ -89,7 +89,11 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 #[derive(Default)]
 /// Statistic during fuzzing
 struct Statistics {
+    /// Nuber of fuzz cases
     fuzz_cases: u64,
+
+    /// Number of risc-v instructions executed
+    instrs_execed: u64,
 }
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
@@ -102,7 +106,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
 
             let _vmexit = loop {
-                let vmexit = emu.run().expect_err("Failed to execute emulator");
+                let vmexit = emu.run(&mut local_stats.instrs_execed)
+                    .expect_err("Failed to execute emulator");
 
                 match vmexit {
                     VmExit::Syscall => {
@@ -121,6 +126,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
         }
         let mut stats = stats.lock().unwrap();
         stats.fuzz_cases += local_stats.fuzz_cases;
+        stats.instrs_execed += local_stats.instrs_execed;
     }
 }
 
@@ -207,6 +213,7 @@ fn main() {
     let start_cycles = rdtsc();
 
     let mut last_cases = 0;
+    let mut last_instrs = 0;
     loop {
         std::thread::sleep(Duration::from_millis(1000));
 
@@ -215,11 +222,14 @@ fn main() {
 
         let elapsed = start.elapsed().as_secs_f64();
         let fuzz_cases = stats.fuzz_cases;
+        let instrs = stats.instrs_execed;
 
-        print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
-            elapsed, fuzz_cases, fuzz_cases - last_cases);
+        print!("[{:10.4}] cases {:10} | fcps {:10} | inst/sec {:10}\n",
+            elapsed, fuzz_cases, fuzz_cases - last_cases,
+            instrs - last_instrs);
 
         last_cases = fuzz_cases;
+        last_instrs = instrs;
     }
 }
 
