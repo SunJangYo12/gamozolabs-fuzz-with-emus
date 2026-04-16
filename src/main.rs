@@ -26,6 +26,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let iov    = emu.reg(Register::A1);
             let iovcnt = emu.reg(Register::A2);
 
+            let mut bytes_written = 0;
+
             for idx in 0..iovcnt {
                 // Compute the pointer to the IO vector entry
                 // corresponding to this index and validate that it
@@ -47,7 +49,14 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 if let Ok(st) = core::str::from_utf8(data) {
                     print!("{}", st);
                 }
+
+                // Update number of bytes written
+                bytes_written += len as u64;
             }
+
+            // Return number of bytes written
+            emu.set_reg(Register::A0, bytes_written);
+
             Ok(())
         }
         94 => {
