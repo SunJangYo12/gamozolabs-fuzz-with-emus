@@ -134,23 +134,30 @@ fn main() {
     push!(argv.0); // Argv
     push!(1u64); // Argc
 
-    let vmexit = loop {
-        let vmexit = emu.run().expect_err("Failed to execute emulator");
+    // Now, fork the VM
+    let mut worker = emu.fork();
 
-        match vmexit {
-            VmExit::Syscall => {
-                if let Err(vmexit) = handle_syscall(&mut emu) {
-                    break vmexit;
+    loop {
+        worker.reset(&emu);
+
+        let vmexit = loop {
+            let vmexit = worker.run().expect_err("Failed to execute emulator");
+
+            match vmexit {
+                VmExit::Syscall => {
+                    if let Err(vmexit) = handle_syscall(&mut worker) {
+                        break vmexit;
+                    }
+
+                    // Advance PC
+                    let pc = worker.reg(Register::Pc);
+                    worker.set_reg(Register::Pc, pc.wrapping_add(4));
                 }
-
-                // Advance PC
-                let pc = emu.reg(Register::Pc);
-                emu.set_reg(Register::Pc, pc.wrapping_add(4));
+                _ => break vmexit,
             }
-            _ => break vmexit,
-        }
-    };
-    print!("VM exited with {:#x?}\n", vmexit);
+        };
+        print!("VM exited with {:#x?}\n", vmexit);
+    }
 }
 
 
