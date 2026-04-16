@@ -104,6 +104,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>, stats: Arc<Statistics>) {
                 _ => break vmexit,
             }
         };
+        stats.fuzz_cases.fetch_add(1, Ordering::Relaxed);
     }
 }
 
