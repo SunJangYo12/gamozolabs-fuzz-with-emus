@@ -36,12 +36,18 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                     .and_then(|x| x.checked_add(15))
                     .ok_or(VmExit::SyscallIntegerOverflow)? as usize;
 
-                let buf: u64 = emu.memory.read(VirtAddr(ptr + 0))
-                    .ok_or(VmExit::ReadFault(VirtAddr(ptr + 0), 8))?;
-                let len: u64 = emu.memory.read(VirtAddr(ptr + 8))
-                    .ok_or(VmExit::ReadFault(VirtAddr(ptr + 8), 8))?;
+                // Read the iovec entry pointer and length
+                let buf: usize = emu.memory.read(VirtAddr(ptr + 0))?;
+                let len: usize = emu.memory.read(VirtAddr(ptr + 8))?;
+
+                // Look at the buffer!
+                let data = emu.memory.peek_perms(VirtAddr(buf), len,
+                    Perm(PERM_READ))?;
             }
             Ok(())
+        }
+        94 => {
+            Err(VmExit::Exit)
         }
         _ => {
             panic!("Unhandled syscall {}\n", num);
@@ -110,7 +116,7 @@ fn main() {
     push!(1u64); // Argc
 
     let vmexit = loop {
-        let vmexit = emu.run().expect("Failed to execute emulator");
+        let vmexit = emu.run().expect_err("Failed to execute emulator");
 
         match vmexit {
             VmExit::Syscall => {

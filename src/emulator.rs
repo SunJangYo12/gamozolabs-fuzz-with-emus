@@ -59,12 +59,24 @@ pub enum VmExit {
     /// The VM exited due to a syscall intruction
     Syscall,
 
+    /// The vm exited cleanly as requested by the VM
+    Exit,
+
     /// An integer overflow occured during a syscall due to bad supplied
     /// arguments by the program
     SyscallIntegerOverflow,
 
-    /// An access of `VirtAddr` of `usize` bytes failed
-    ReadFault(VirtAddr, usize),
+    /// A read or write memory request overflowed the address size
+    AddressIntegerOverflow,
+
+    /// The address requested was not in bounds of the guest memory space
+    AddressMiss(VirtAddr, usize),
+
+    /// An read of `VirtAddr` failed due to missong permissions
+    ReadFault(VirtAddr),
+
+    /// An write of `VirtAddr` failed due to missong permissions
+    WriteFault(VirtAddr),
 }
 
 /// A R-type intruction
@@ -260,7 +272,7 @@ impl Emulator {
         }
     }
 
-    pub fn run(&mut self) -> Option<(VmExit)> {
+    pub fn run(&mut self) -> Result<(), VmExit> {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
@@ -649,7 +661,7 @@ impl Emulator {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
-                        return Some(VmExit::Syscall);
+                        return Err(VmExit::Syscall);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
                     } else {
