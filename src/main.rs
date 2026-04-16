@@ -131,7 +131,7 @@ fn main() {
             _ => break vmexit,
         }
     };
-    print!("VM exited with {:?}\n", vmexit);
+    print!("VM exited with {:#x?}\n", vmexit);
 }
 
 
