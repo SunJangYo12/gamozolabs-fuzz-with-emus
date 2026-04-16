@@ -8,6 +8,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit};
 
+/// If `true` the guest writes to stdout and stderr will be printed to our
+/// own stdout and stderr
+const VERBOSE_GUEST_PRINTS: bool = false;
+
+fn rdtsc() -> u64 {
+    unsafe { std::arch::x86_64::_rdtsc() }
+}
+
 fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
@@ -55,10 +63,11 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let data = emu.memory.peek_perms(VirtAddr(buf), len,
                     Perm(PERM_READ))?;
 
-                /*
-                if let Ok(st) = core::str::from_utf8(data) {
-                    print!("{}", st);
-                }*/
+                if VERBOSE_GUEST_PRINTS {
+                    if let Ok(st) = core::str::from_utf8(data) {
+                        print!("{}", st);
+                    }
+                }
 
                 // Update number of bytes written
                 bytes_written += len as u64;
@@ -88,7 +97,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>, stats: Arc<Statistics>) {
     loop {
         emu.reset(&*original);
 
-        let vmexit = loop {
+        let _vmexit = loop {
             let vmexit = emu.run().expect_err("Failed to execute emulator");
 
             match vmexit {
@@ -168,9 +177,6 @@ fn main() {
     push!(argv.0); // Argv
     push!(1u64); // Argc
 
-    // Start a timer
-    let start = Instant::now();
-
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
 
@@ -186,6 +192,12 @@ fn main() {
             worker(new_emu, parent, stats);
         });
     }
+
+    // Start a timer
+    let start = Instant::now();
+
+    // Save the time stamp of start of execution
+    let start_cycles = rdtsc();
 
     loop {
         std::thread::sleep(Duration::from_millis(1000));
