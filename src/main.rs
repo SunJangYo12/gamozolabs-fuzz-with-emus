@@ -2,6 +2,7 @@ pub mod primitive;
 pub mod mmu;
 pub mod emulator;
 
+use std::time::Instant;
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit};
 
@@ -138,7 +139,10 @@ fn main() {
     // Now, fork the VM
     let mut worker = emu.fork();
 
-    loop {
+    // Start a timer
+    let start = Instant::now();
+
+    for fuzz_cases in 1u64.. {
         worker.reset(&emu);
 
         let vmexit = loop {
@@ -158,6 +162,12 @@ fn main() {
             }
         };
         //print!("VM exited with {:#x?}\n", vmexit);
+
+        if fuzz_cases % 6000 == 0 { //orig & 0xffff
+            let elapsed = start.elapsed().as_secs_f64();
+            print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
+                elapsed, fuzz_cases, fuzz_cases as f64 / elapsed);
+        }
     }
 }
 
