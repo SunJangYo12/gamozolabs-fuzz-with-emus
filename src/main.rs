@@ -2,9 +2,8 @@ pub mod primitive;
 pub mod mmu;
 pub mod emulator;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use std::sync::atomic::{AtomicU64, Ordering};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit};
 
@@ -90,30 +89,38 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 #[derive(Default)]
 /// Statistic during fuzzing
 struct Statistics {
-    fuzz_cases: AtomicU64,
+    fuzz_cases: u64,
 }
 
-fn worker(mut emu: Emulator, original: Arc<Emulator>, stats: Arc<Statistics>) {
+fn worker(mut emu: Emulator, original: Arc<Emulator>,
+        stats: Arc<Mutex<Statistics>>) {
+    const BATCH_SIZE: usize = 1000;
     loop {
-        emu.reset(&*original);
+        let mut local_stats = Statistics::default();
 
-        let _vmexit = loop {
-            let vmexit = emu.run().expect_err("Failed to execute emulator");
+        for _ in 0..BATCH_SIZE {
+            emu.reset(&*original);
 
-            match vmexit {
-                VmExit::Syscall => {
-                    if let Err(vmexit) = handle_syscall(&mut emu) {
-                        break vmexit;
+            let _vmexit = loop {
+                let vmexit = emu.run().expect_err("Failed to execute emulator");
+
+                match vmexit {
+                    VmExit::Syscall => {
+                        if let Err(vmexit) = handle_syscall(&mut emu) {
+                            break vmexit;
+                        }
+
+                        // Advance PC
+                        let pc = emu.reg(Register::Pc);
+                        emu.set_reg(Register::Pc, pc.wrapping_add(4));
                     }
-
-                    // Advance PC
-                    let pc = emu.reg(Register::Pc);
-                    emu.set_reg(Register::Pc, pc.wrapping_add(4));
+                    _ => break vmexit,
                 }
-                _ => break vmexit,
-            }
-        };
-        stats.fuzz_cases.fetch_add(1, Ordering::Relaxed);
+            };
+            local_stats.fuzz_cases += 1;
+        }
+        let mut stats = stats.lock().unwrap();
+        stats.fuzz_cases += local_stats.fuzz_cases;
     }
 }
 
@@ -181,7 +188,7 @@ fn main() {
     let emu = Arc::new(emu);
 
     // Create a new stats structure
-    let stats = Arc::new(Statistics::default());
+    let stats = Arc::new(Mutex::new(Statistics::default()));
 
     for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
@@ -203,8 +210,11 @@ fn main() {
     loop {
         std::thread::sleep(Duration::from_millis(1000));
 
+        // Get access to the stats structure
+        let stats = stats.lock().unwrap();
+
         let elapsed = start.elapsed().as_secs_f64();
-        let fuzz_cases = stats.fuzz_cases.load(Ordering::Relaxed);
+        let fuzz_cases = stats.fuzz_cases;
 
         print!("[{:10.4}] cases {:10} | fcps {:10.2}\n",
             elapsed, fuzz_cases, fuzz_cases - last_cases);
