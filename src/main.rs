@@ -34,11 +34,13 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let ptr = 16u64.checked_mul(idx)
                     .and_then(|x| x.checked_add(iov))
                     .and_then(|x| x.checked_add(15))
-                    .ok_or(VmExit::SyscallIntegerOverflow)? as usize;
+                    .ok_or(VmExit::SyscallIntegerOverflow)? as usize - 15;
 
                 // Read the iovec entry pointer and length
                 let buf: usize = emu.memory.read(VirtAddr(ptr + 0))?;
                 let len: usize = emu.memory.read(VirtAddr(ptr + 8))?;
+
+                print!("Buf {:x?} {:x?}\n", buf, len);
 
                 // Look at the buffer!
                 let data = emu.memory.peek_perms(VirtAddr(buf), len,
