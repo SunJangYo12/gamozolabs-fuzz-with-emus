@@ -257,6 +257,12 @@ fn main() {
         let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
         let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
 
+
+        // example performance:
+        //     reset 0.0046 | vm 0.9918
+        // artinya:
+        //     setengah persen waktu cpu kita habiskan untuk reset VM
+        //     meskipun kita sedang mengatur ulang 4,6 juta
         print!("[{:10.4}] cases {:10} | fcps {:10} | inst/sec {:10}\n\
                     reset {:8.4} | vm {:8.4}\n",
             elapsed, fuzz_cases, fuzz_cases - last_cases,
