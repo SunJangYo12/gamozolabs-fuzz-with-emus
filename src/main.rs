@@ -52,9 +52,10 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let data = emu.memory.peek_perms(VirtAddr(buf), len,
                     Perm(PERM_READ))?;
 
+                /*
                 if let Ok(st) = core::str::from_utf8(data) {
                     print!("{}", st);
-                }
+                }*/
 
                 // Update number of bytes written
                 bytes_written += len as u64;
@@ -156,7 +157,7 @@ fn main() {
                 _ => break vmexit,
             }
         };
-        print!("VM exited with {:#x?}\n", vmexit);
+        //print!("VM exited with {:#x?}\n", vmexit);
     }
 }
 
