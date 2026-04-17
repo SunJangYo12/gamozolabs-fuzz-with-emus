@@ -160,36 +160,29 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 fn main() {
-    let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
+    let mut emu = Emulator::new(1024 * 1024); //32MB
 
     // Loa the application into the emulator
     // readelf -l test_app
-    emu.memory.load("./test_app", &[
+    emu.memory.load("./objdump", &[
         Section {
             file_off:    0x0000000000000000,            // first LOAD
             virt_addr:   VirtAddr(0x0000000000010000),
-            file_size:   0x0000000000000190,
-            mem_size:    0x0000000000000190,
+            file_size:   0x00000000000ab348,
+            mem_size:    0x00000000000ab348,
             permissions: Perm(PERM_READ),
         },
         Section {
-            file_off:    0x0000000000000190,            // second LOAD
-            virt_addr:   VirtAddr(0x0000000000011190),
-            file_size:   0x0000000000002598,
-            mem_size:    0x0000000000002598,
+            file_off:    0x00000000000ab348,            // second LOAD
+            virt_addr:   VirtAddr(0x00000000000bc348),
+            file_size:   0x0000000000001e52,
+            mem_size:    0x00000000000046e8,
             permissions: Perm(PERM_EXEC),
-        },
-        Section {
-            file_off:    0x0000000000002728,            // third LOAD
-            virt_addr:   VirtAddr(0x0000000000014728),
-            file_size:   0x00000000000000f8,
-            mem_size:    0x0000000000000750,
-            permissions: Perm(PERM_READ | PERM_WRITE),
         },
     ]).expect("Failed to load test application into address space");
 
     // Set the program entry point
-    emu.set_reg(Register::Pc, 0x11190);
+    emu.set_reg(Register::Pc, 0x103ee);
 
     // Set up a stack
     let stack = emu.memory.allocate(32 * 1024)
@@ -225,7 +218,7 @@ fn main() {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
