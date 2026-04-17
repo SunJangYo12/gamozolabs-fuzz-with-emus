@@ -227,7 +227,6 @@ impl Mmu {
                 .ok_or(VmExit::AddressIntegerOverflow)?)
                 .ok_or(VmExit::AddressMiss(addr, buf.len()))?;
             
-
         // Check permissions
         for (idx, &perm) in perms.iter().enumerate() {
             if (perm.0 & exp_perms.0) != exp_perms.0 {
@@ -251,6 +250,7 @@ impl Mmu {
     pub fn read_perms<T: Primitive>(&mut self, addr: VirtAddr,
                                     exp_perms: Perm) -> Result<T, VmExit> {
         let mut tmp = [0u8; 16];
+
         self.read_into_perms(addr, &mut tmp[..core::mem::size_of::<T>()],
             exp_perms)?;
         Ok(unsafe { core::ptr::read_unaligned(tmp.as_ptr() as *const T) })

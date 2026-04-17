@@ -11,9 +11,6 @@ use emulator::{Emulator, Register, VmExit};
 /// own stdout and stderr
 const VERBOSE_GUEST_PRINTS: bool = false;
 
-fn rdtsc() -> u64 {
-    unsafe { std::arch::x86_64::_rdtsc() }
-}
 
 fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
@@ -98,7 +95,7 @@ struct Statistics {
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>) {
-    const BATCH_SIZE: usize = 1000;
+    const BATCH_SIZE: usize = 100;
     loop {
         let mut local_stats = Statistics::default();
 
@@ -134,7 +131,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 fn main() {
-    let mut emu = Emulator::new(1024 * 1024); //32MB
+    let mut emu = Emulator::new(32 * 1024 * 1024); //1MB
 
     // Loa the application into the emulator
     // readelf -l test_app
@@ -144,14 +141,14 @@ fn main() {
             virt_addr:   VirtAddr(0x0000000000010000),
             file_size:   0x00000000000ab348,
             mem_size:    0x00000000000ab348,
-            permissions: Perm(PERM_READ),
+            permissions: Perm(PERM_READ | PERM_EXEC),
         },
         Section {
             file_off:    0x00000000000ab348,            // second LOAD
             virt_addr:   VirtAddr(0x00000000000bc348),
             file_size:   0x0000000000001e52,
             mem_size:    0x00000000000046e8,
-            permissions: Perm(PERM_EXEC),
+            permissions: Perm(PERM_READ | PERM_WRITE),
         },
     ]).expect("Failed to load test application into address space");
 

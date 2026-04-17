@@ -276,6 +276,7 @@ impl Emulator {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
+
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))?;
 
@@ -285,7 +286,7 @@ impl Emulator {
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
-            //print!("Executing {:#x} {:b}\n", pc, opcode);
+            print!("Executing {:#x} {:b}\n", pc, opcode);
 
             match opcode {
                 0b0110111 => {
