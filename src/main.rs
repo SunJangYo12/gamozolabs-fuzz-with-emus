@@ -121,13 +121,13 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             // Reset emu to original state
             let it = rdtsc();
             emu.reset(&*original);
-            local_stats.reset_cycles += rdtsc() - it;
+            //local_stats.reset_cycles += rdtsc() - it;
 
             let _vmexit = loop {
                 let it = rdtsc();
                 let vmexit = emu.run(&mut local_stats.instrs_execed)
                     .expect_err("Failed to execute emulator");
-                local_stats.vm_cycles += rdtsc() - it;
+                //local_stats.vm_cycles += rdtsc() - it;
 
                 match vmexit {
                     VmExit::Syscall => {
