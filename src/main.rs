@@ -94,40 +94,21 @@ struct Statistics {
 
     /// Number of risc-v instructions executed
     instrs_execed: u64,
-
-    /// Total number of CPU cycles spent in the workers
-    total_cycles: u64,
-
-    /// Total number of CPU cycles spent resetting the guest
-    reset_cycles: u64,
-
-    /// Total number of CPU cycles spent emulating
-    vm_cycles: u64,
-
-    /// Total number of CPU cycles spent handling vmexits
-    vmexit_cycles: u64,
 }
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>) {
     const BATCH_SIZE: usize = 1000;
     loop {
-        // Start a timer
-        let batch_start = rdtsc();
-
         let mut local_stats = Statistics::default();
 
         for _ in 0..BATCH_SIZE {
             // Reset emu to original state
-            let it = rdtsc();
             emu.reset(&*original);
-            //local_stats.reset_cycles += rdtsc() - it;
 
             let _vmexit = loop {
-                let it = rdtsc();
                 let vmexit = emu.run(&mut local_stats.instrs_execed)
                     .expect_err("Failed to execute emulator");
-                //local_stats.vm_cycles += rdtsc() - it;
 
                 match vmexit {
                     VmExit::Syscall => {
@@ -149,13 +130,6 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
         stats.fuzz_cases    += local_stats.fuzz_cases;
         stats.instrs_execed += local_stats.instrs_execed;
-
-        stats.reset_cycles  += local_stats.reset_cycles;
-        stats.vm_cycles     += local_stats.vm_cycles;
-
-        // Compute amount of time during the batch
-        let batch_elapsed = rdtsc() - batch_start;
-        stats.total_cycles  += batch_elapsed;
     }
 }
 
@@ -231,9 +205,6 @@ fn main() {
     // Start a timer
     let start = Instant::now();
 
-    // Save the time stamp of start of execution
-    let start_cycles = rdtsc();
-
     let mut last_cases = 0;
     let mut last_instrs = 0;
     loop {
@@ -246,21 +217,9 @@ fn main() {
         let fuzz_cases = stats.fuzz_cases;
         let instrs = stats.instrs_execed;
 
-        // Compute perfomace numbers
-        let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
-        let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
-
-
-        // example performance:
-        //     reset 0.0046 | vm 0.9918
-        // artinya:
-        //     setengah persen waktu cpu kita habiskan untuk reset VM
-        //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | fcps {:10} | inst/sec {:10}\n\
-                    reset {:8.4} | vm {:8.4}\n",
+        print!("[{:10.4}] cases {:10} | fcps {:10} | inst/sec {:10}\n",
             elapsed, fuzz_cases, fuzz_cases - last_cases,
-            instrs - last_instrs,
-            resetc, vmc);
+            instrs - last_instrs);
 
         last_cases = fuzz_cases;
         last_instrs = instrs;
