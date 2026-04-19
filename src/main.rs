@@ -24,7 +24,17 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             // sbrk()
             let increment: i64 = emu.reg(Register::A0) as i64;
 
-            panic!("Brk increment {}\n", increment);
+            // Turn negative increments into a 0
+            let increment = core::cmp::max(0i64, increment) as usize;
+
+            // Attempt to extend data section by increment
+            if let Some(base) = emu.memory.allocate(increment) {
+                emu.set_reg(Register::A0, base.0 as u64);
+            } else {
+                emu.set_reg(Register::A0, !0);
+            }
+
+            Ok(())
         }
         _ => {
             panic!("Unhandled syscall {}\n", num);
@@ -106,7 +116,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 fn main() {
-    let mut emu = Emulator::new(1024 * 1024); //1MB
+    let mut emu = Emulator::new(2 * 1024 * 1024); //2MB
 
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
