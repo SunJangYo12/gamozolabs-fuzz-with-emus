@@ -1,0 +1,89 @@
+# build toolchain riscvi
+cek repo sunjanyo12/test-ci > log riscv terakhir
+
+
+# THIS FAIL
+2001  export PATH="/media/jin/964EB75E4EB735B9/Users/Administrator/Desktop/New-data/Tools/Toolchain/riscv-gnu-toolchain/JIN/riscv/bin:$PATH"
+ 2002  ls
+ 2003  cd binutils-2.14/
+ 2004  ls
+ 2005  CC=riscv64-unknown-elf-gcc ./configure
+
+# THIS OKE
+ 2028  cd opcodes/
+ 2029  ls
+ 2030  CC=riscv64-unknown-elf-gcc ./configure
+ 2031  make
+ 2032  make clean
+ 2033  make
+ 2034  ls
+ 2035  ls -a
+ 2036  find -name *.la
+ 2037  make
+ 2038  cd ..
+ 2039  ls
+ 2040  cd bfd/
+ 2041  ls
+ 2042  CC=riscv64-unknown-elf-gcc ./configure
+ 2043  make
+ 2044  cd ..
+ 2045  ls
+ 2046  cd libiberty/
+ 2047  ls
+ 2048  CC=riscv64-unknown-elf-gcc ./configure
+ 2049  cd ..
+ 2050  cd intl/
+ 2051  ls
+ 2052  CC=riscv64-unknown-elf-gcc ./configure
+ 2053  make -j2
+ 2054  cd ..
+ 2055  ls
+ 2056  cd bfd/
+ 2057  ls
+ 2058  make
+ 2059  file *.la
+ 2060  find -name *.la
+ 2061  cd ..
+ 2062  cd libiberty/
+ 2063  ls
+ 2064  make
+ 2065  CC=riscv64-unknown-elf-gcc ./configure
+ 2066  make -j2
+ 2067  find -name *.la
+ 2068  find -name *.a
+ 2069  cd ..
+ 2070  cd opcodes/
+ 2071  CC=riscv64-unknown-elf-gcc ./configure
+ 2072  make -j2
+ 2073  ls *.la
+ 2074  cd ..
+ 2075  ls
+ 2076  cd binutils/
+ 2077  ls
+ 2078  CC=riscv64-unknown-elf-gcc ./configure
+ 2079  make -j2
+ 2091  riscv64-unknown-elf-gcc -W -Wall -Wstrict-prototypes -Wmissing-prototypes -g -O2 -o objdump objdump.o budemang.o prdbg.o rddbg.o debug.o stabs.o ieee.o rdcoff.o bucomm.o version.o filemode.o ../opcodes/.libs/libopcodes.a ../bfd/libbfd.a ../libiberty/libiberty.a ../intl/libintl.a ../../foo.c -static
+ 2092  file objdump
+
+# content foo.c
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+int access(const char *pathname, int mode) {
+   return F_OK;
+}
+
+mode_t umask(mode_t mask) {
+    return 0777;
+}
+
+int chmod(const char *pathname, mode_t mode) {
+    return 0;
+}
+
+char *getwd(char *buf) {
+//    return "/media/jin/4abb279b-6d65-4663-97c2-26987f64673a/home/yuna/Lab/BrandonFalk/Gamozolabs-video/binutils_fuzzing/binutils-2.14/binutils";
+     return "/home/yuna/Lab/BrandonFalk/Gamozolabs-video/binutils_fuzzing/binutils-2.14";
+}
+
