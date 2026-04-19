@@ -37,6 +37,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 emu.set_reg(Register::A0, !0);
             }
 
+            print!("Brk returns {:x}?\n", emu.reg(Register::A0));
+
             Ok(())
         }
         _ => {
