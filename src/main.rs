@@ -102,7 +102,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            print!("Vmexit {:?}\n", _vmexit);
+            print!("Vmexit {:#x} {:?}\n", emu.reg(Register::Pc, _vmexit);
             local_stats.fuzz_cases += 1;
         }
         // Get access to statistics
