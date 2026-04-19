@@ -20,6 +20,12 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     let num = emu.reg(Register::A7);
 
     match num {
+        214 => {
+            // sbrk()
+            let increment: i64 = emu.reg(Register::A0) as i64;
+
+            panic!("Brk increment {}\n", increment);
+        }
         _ => {
             panic!("Unhandled syscall {}\n", num);
         }
