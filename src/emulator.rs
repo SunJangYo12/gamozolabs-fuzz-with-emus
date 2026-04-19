@@ -467,6 +467,7 @@ impl Emulator {
                             let mut tmp = [0u8; 8];
                             print!("Loading {:#x}\n", addr.0);
                             self.memory.read_into(addr, &mut tmp)?;
+                            print!("{:#x?}\n", tmp);
                             self.set_reg(inst.rd,
                                 i64::from_le_bytes(tmp) as i64 as u64);
                         }
