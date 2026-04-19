@@ -35,9 +35,10 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 emu.set_reg(Register::A0, base.0 as u64);
             } else {
                 emu.set_reg(Register::A0, !0);
+                panic!("BRK FAILURE");
             }
 
-            print!("Brk returns {:x}?\n", emu.reg(Register::A0));
+            print!("Brk of {:#x} returning {:#x}\n", increment, emu.reg(Register::A0));
 
             Ok(())
         }
@@ -123,7 +124,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 fn main() {
-    let mut emu = Emulator::new(2 * 1024 * 1024); //2MB
+    let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
 
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
