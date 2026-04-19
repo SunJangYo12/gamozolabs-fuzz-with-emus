@@ -24,11 +24,14 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             // sbrk()
             let increment: i64 = emu.reg(Register::A0) as i64;
 
+            // We don't handle negative brks yet
+            assert!(increment >= 0);
+
             // Turn negative increments into a 0
             let increment = core::cmp::max(0i64, increment) as usize;
 
             // Attempt to extend data section by increment
-            if let Some(base) = emu.memory.allocate(increment) {
+            if let Some(base) = emu.memory.allocate(increment as usize) {
                 emu.set_reg(Register::A0, base.0 as u64);
             } else {
                 emu.set_reg(Register::A0, !0);
@@ -98,6 +101,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                     _ => break vmexit,
                 }
             };
+
+            print!("Vmexit {:?}\n", _vmexit);
             local_stats.fuzz_cases += 1;
         }
         // Get access to statistics
@@ -145,7 +150,7 @@ fn main() {
     emu.set_reg(Register::Sp, stack.0 as u64 + 32 * 1024);
 
     // Set Up the program name
-    let argv = emu.memory.allocate(8)
+    let argv = emu.memory.allocate(4096)
         .expect("Failed to allocated program name");
     emu.memory.write_from(argv, b"test\0")
         .expect("Failed to write program name");

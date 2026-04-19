@@ -285,7 +285,7 @@ impl Emulator {
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
-            print!("Executing {:#x} {:b}\n", pc, opcode);
+            //print!("Executing {:#x} {:b}\n", pc, opcode);
 
             match opcode {
                 0b0110111 => {
@@ -667,6 +667,7 @@ impl Emulator {
                         return Err(VmExit::Syscall);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
+                        panic!("EBREAK");
                     } else {
                         unreachable!()
                     }
