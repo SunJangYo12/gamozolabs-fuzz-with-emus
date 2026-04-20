@@ -137,15 +137,15 @@ fn main() {
         Section {
             file_off:    0x0000000000000000,            // first LOAD
             virt_addr:   VirtAddr(0x0000000000010000),
-            file_size:   0x00000000000e2ae4,
-            mem_size:    0x00000000000e2ae4,
+            file_size:   0x00000000000e1b74,
+            mem_size:    0x00000000000e1b74,
             permissions: Perm(PERM_READ | PERM_EXEC),
         },
         Section {
-            file_off:    0x00000000000e3000,            // second LOAD
-            virt_addr:   VirtAddr(0x00000000000f3000),
-            file_size:   0x0000000000001e4a,
-            mem_size:    0x00000000000046e0,
+            file_off:    0x00000000000e2000,            // second LOAD
+            virt_addr:   VirtAddr(0x00000000000f2000),
+            file_size:   0x0000000000001e32,
+            mem_size:    0x00000000000046c8,
             permissions: Perm(PERM_READ | PERM_WRITE),
         },
     ]).expect("Failed to load test application into address space");
