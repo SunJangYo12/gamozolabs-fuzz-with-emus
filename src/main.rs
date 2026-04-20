@@ -110,7 +110,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 *file = Some(File::FuzzInput);
 
                 // Return a new fd
-                emu.set_reg(Register::A0, 1024);
+                emu.set_reg(Register::A0, fd as u64);
             } else {
                 print!("Unkown filename: {:?}\n",
                         core::str::from_utf8(bytes));
