@@ -23,16 +23,14 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
         214 => {
             // brk()
             let req_base = emu.reg(Register::A0);
+            let cur_base = emu.memory.allocate(0).unwrap();
 
             let increment = if req_base != 0 {
-                let cur_base = emu.memory.allocate(0).unwrap();
                 (req_base as i64).checked_sub(cur_base.0 as i64)
                     .ok_or(VmExit::SyscallIntegerOverflow)?
             } else {
                 0
             };
-
-            print!("{:#x} {}\n", req_base, increment);
 
             // We don't handle negative brks yet
             assert!(increment >= 0);
@@ -42,13 +40,11 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
             // Attempt to extend data section by increment
             if let Some(base) = emu.memory.allocate(increment as usize) {
-                emu.set_reg(Register::A0, base.0 as u64);
+                let new_base = cur_base.0 + increment as usize;
+                emu.set_reg(Register::A0, new_base as u64);
             } else {
                 emu.set_reg(Register::A0, !0);
-                panic!("BRK FAILURE");
             }
-
-            print!("Brk of {:#x} returning {:#x}\n", increment, emu.reg(Register::A0));
 
             Ok(())
         }
@@ -115,7 +111,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            panic!("Vmexit {:#x} {:?}\n", emu.reg(Register::Pc), _vmexit);
+            panic!("Vmexit {:#x} {:#x?}\n", emu.reg(Register::Pc), _vmexit);
             local_stats.fuzz_cases += 1;
         }
         // Get access to statistics
