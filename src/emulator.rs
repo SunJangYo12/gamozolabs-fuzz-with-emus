@@ -339,6 +339,20 @@ impl Emulator {
         self.files.get_mut(fd)
     }
 
+    /// Allocate a new file descriptor
+    pub fn alloc_file(&mut self) -> usize {
+        for (fd, file) in self.files.iter().enumerate() {
+            if file.is_none() {
+                // File not present, we can reuse the FD
+                return fd;
+            }
+        }
+        // If we got here, no FD is present, create a new one
+        let fd = self.files.len();
+        self.files.push(None);
+        fd
+    }
+
     /// Get a register from the guest
     pub fn reg(&self, register: Register) -> u64 {
         if register != Register::Zero {
