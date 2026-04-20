@@ -39,7 +39,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let increment = core::cmp::max(0i64, increment) as usize;
 
             // Attempt to extend data section by increment
-            if let Some(base) = emu.memory.allocate(increment as usize) {
+            if let Some(_) = emu.memory.allocate(increment as usize) {
                 let new_base = cur_base.0 + increment as usize;
                 emu.set_reg(Register::A0, new_base as u64);
             } else {
@@ -73,6 +73,12 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Unkwon FD
                 emu.set_reg(Register::A0, !0);
             }
+            Ok(())
+        }
+        57 => {
+            // close()
+            // Just return success for now
+            emu.set_reg(Register::A0, 0);
             Ok(())
         }
         _ => {
@@ -189,7 +195,7 @@ fn main() {
     // Set Up the program name
     let argv = emu.memory.allocate(4096)
         .expect("Failed to allocated program name");
-    emu.memory.write_from(argv, b"test\0")
+    emu.memory.write_from(argv, b"objdump\0")
         .expect("Failed to write program name");
 
     macro_rules! push {
