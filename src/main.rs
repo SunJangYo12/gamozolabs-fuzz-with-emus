@@ -101,7 +101,13 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Create a new file descriptor
                 let fd = emu.alloc_file();
 
-                print!("Allocate FD {}\n", fd);
+                // Get access to file, unwarp here is safe because there's
+                // no way the file is not a valid FD if we got it from our
+                // own APIs
+                let file = emu.get_file(fd).unwrap();
+
+                // Mark that this file should be backed by our fuzz input
+                *file = Some(File::FuzzInput);
 
                 // Return a new fd
                 emu.set_reg(Register::A0, 1024);
@@ -113,6 +119,21 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 emu.set_reg(Register::A0, !0);
             }
             Ok(())
+        }
+        80 => {
+            // fstat()
+            let fd      = emu.reg(Register::A0) as usize;
+            let statbuf = emu.reg(Register::A1);
+
+            // Check if the FD is valid
+            let file = emu.get_file(fd);
+            if file.is_none() || file.as_ref().unwrap().is_none() {
+                // FD wat not valid, return out with an error
+                emu.set_reg(Register::A0, !0);
+                return Ok(());
+            }
+
+            panic!("Fstat of {:?}\n", file);
         }
         57 => {
             // close()
