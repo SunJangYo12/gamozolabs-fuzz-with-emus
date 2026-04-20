@@ -75,6 +75,19 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
             Ok(())
         }
+        1024 => {
+            // open()
+            let filename = emu.reg(Register::A0) as usize;
+            let flags    = emu.reg(Register::A1);
+            let _mode    = emu.reg(Register::A2);
+
+            let mut fnlen = 0;
+            while emu.memory.read::<u8>(VirtAddr(filename + fnlen))? != 0 {
+                fnlen += 1;
+            }
+
+            panic!("File name length is {}\n", fnlen);
+        }
         57 => {
             // close()
             // Just return success for now
