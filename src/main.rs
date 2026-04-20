@@ -194,10 +194,18 @@ fn main() {
     emu.set_reg(Register::Sp, stack.0 as u64 + 32 * 1024);
 
     // Set Up the program name
-    let argv = emu.memory.allocate(4096)
+    let progname = emu.memory.allocate(4096)
         .expect("Failed to allocated program name");
-    emu.memory.write_from(argv, b"objdump\0")
+    emu.memory.write_from(progname, b"objdump\0")
         .expect("Failed to write program name");
+    let arg1 = emu.memory.allocate(4096)
+        .expect("Failed to allocated arg1");
+    emu.memory.write_from(arg1, b"-x\0")
+        .expect("Failed to write arg1");
+    let arg2 = emu.memory.allocate(4096)
+        .expect("Failed to allocated arg2");
+    emu.memory.write_from(arg2, b"testfn\0")
+        .expect("Failed to write arg2");
 
     macro_rules! push {
         ($expr:expr) => {
@@ -213,8 +221,10 @@ fn main() {
     push!(0u64);   // Auxp
     push!(0u64);   // Envp
     push!(0u64);   // Argv end
-    push!(argv.0); // Argv
-    push!(1u64); // Argc
+    push!(arg2.0); // Argv
+    push!(arg1.0); // Argv
+    push!(progname.0); // Argv
+    push!(3u64); // Argc
 
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
