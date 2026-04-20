@@ -1,6 +1,7 @@
 //! A 64-bit RISC-V RV64i interpreter
 
 use std::fmt;
+use std::sync::Arc;
 use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC};
 
 /// 64-bit RISC-V registers
@@ -267,6 +268,17 @@ impl From<u32> for Utype {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum File {
+    Stdin,
+    Stdout,
+    Stderr,
+
+    // A file which is backed by the current fuzz input
+    FuzzInput {
+    }
+}
+
 
 /// All the state of the emulated system
 pub struct Emulator {
@@ -275,22 +287,36 @@ pub struct Emulator {
 
     /// All RV64i registers
     registers: [u64; 33],
+
+    /// Fuzz input for the program
+    fuzz_input: Vec<u8>,
+
+    /// File handle table (indexed by file descriptor)
+    files: Vec<Option<File>>,
 }
 
 impl Emulator {
     /// Creates a new emulator with `size` bytes of memory
     pub fn new(size: usize) -> Self {
         Emulator {
-            memory: Mmu::new(size),
-            registers: [0; 33],
+            memory:     Mmu::new(size),
+            registers:  [0; 33],
+            fuzz_input: Vec::new(),
+            files: vec![
+                Some(File::Stdin),
+                Some(File::Stdout),
+                Some(File::Stderr),
+            ],
         }
     }
 
     /// Fork an emulator into a new emulator which will diff from the original
     pub fn fork(&self) -> Self {
         Emulator {
-            memory:    self.memory.fork(),
-            registers: self.registers.clone(),
+            memory:     self.memory.fork(),
+            registers:  self.registers.clone(),
+            fuzz_input: self.fuzz_input.clone(),
+            files:      self.files.clone(),
         }
     }
 
@@ -302,6 +328,10 @@ impl Emulator {
 
         // Reset register state
         self.registers = other.registers;
+
+        // Reset file state
+        self.files.clear();
+        self.files.extend_from_slice(&other.files);
     }
 
     /// Get a register from the guest
