@@ -240,13 +240,16 @@ fn main() {
 
     let mut last_cases = 0;
     let mut last_instrs = 0;
+    let mut last_time = Instant::now();
     loop {
         std::thread::sleep(Duration::from_millis(1000));
 
         // Get access to the stats structure
         let stats = stats.lock().unwrap();
 
+        let time_delta = last_time.elapsed().as_secs_f64();
         let elapsed = start.elapsed().as_secs_f64();
+
         let fuzz_cases = stats.fuzz_cases;
         let instrs = stats.instrs_execed;
 
@@ -260,14 +263,16 @@ fn main() {
         // artinya:
         //     setengah persen waktu cpu kita habiskan untuk reset VM
         //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | fcps {:10} | inst/sec {:10}\n\
+        print!("[{:10.4}] cases {:10} | fcps {:10.1} | inst/sec {:10.1}\n\
                     reset {:8.4} | vm {:8.4}\n",
-            elapsed, fuzz_cases, fuzz_cases - last_cases,
-            instrs - last_instrs,
+            elapsed, fuzz_cases,
+            (fuzz_cases - last_cases) as f64 / time_delta,
+            (instrs - last_instrs) as f64 / time_delta,
             resetc, vmc);
 
         last_cases = fuzz_cases;
         last_instrs = instrs;
+        last_time   = Instant::now();
     }
 }
 
