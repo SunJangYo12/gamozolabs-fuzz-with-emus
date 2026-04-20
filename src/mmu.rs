@@ -199,7 +199,7 @@ impl Mmu {
 
     /// Return an immutable slice to memory at `addr` for `size` bytes
     /// that has been validated to match all `exp_perms`
-    pub fn peek_perms(&self, addr: VirtAddr, size: usize,
+    pub fn peek(&self, addr: VirtAddr, size: usize,
                             exp_perms: Perm) -> Result<&[u8], VmExit> {
         let perms =
             self.permissions.get(addr.0..addr.0.checked_add(size)

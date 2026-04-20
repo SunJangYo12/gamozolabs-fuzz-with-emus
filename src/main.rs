@@ -9,7 +9,7 @@ use emulator::{Emulator, Register, VmExit};
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = false;
+const VERBOSE_GUEST_PRINTS: bool = true;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -56,6 +56,17 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
             if fd == 1 || fd == 2 {
                 // Writes to stdout and stderr
+
+                // Get access to the underlying bytes to write
+                let bytes = emu.memory.peek(VirtAddr(buf as usize),
+                    len as usize, Perm(PERM_READ))?;
+
+                if VERBOSE_GUEST_PRINTS {
+                    if let Ok(st) = core::str::from_utf8(bytes) {
+                        print!("{}", st);
+                    }
+                }
+
                 // Set that all bytes were read
                 emu.set_reg(Register::A0, len);
             } else {
