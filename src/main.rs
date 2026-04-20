@@ -81,9 +81,17 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let flags    = emu.reg(Register::A1);
             let _mode    = emu.reg(Register::A2);
 
+            // Determine the length the filename
             let mut fnlen = 0;
             while emu.memory.read::<u8>(VirtAddr(filename + fnlen))? != 0 {
                 fnlen += 1;
+            }
+
+            // Get the filename bytes
+            let bytes = emu.memory.peek(VirtAddr(filename),
+                fnlen, Perm(PERM_READ))?;
+            if let Ok(filename) = core::str::from_utf8(bytes) {
+                print!("Filename is {}\n", filename);
             }
 
             panic!("File name length is {}\n", fnlen);
