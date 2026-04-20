@@ -57,8 +57,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
             let file = emu.get_file(fd);
             if let Some(Some(file)) = file {
-                if file == &File::Stdout ||
-                    file == &File::Stderr {
+                if file == &File::Stdout || file == &File::Stderr {
                     // Writes to stdout and stderr
 
                     // Get access to the underlying bytes to write
@@ -111,8 +110,25 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
         }
         57 => {
             // close()
-            // Just return success for now
-            emu.set_reg(Register::A0, 0);
+            let fd = emu.reg(Register::A0) as usize;
+
+            if let Some(file) = emu.get_file(fd) {
+                if file.is_some() {
+                    // File was present and currently open, close it
+
+                    // Close the file
+                    *file = None;
+
+                    // Just return success for now
+                    emu.set_reg(Register::A0, 0);
+                } else {
+                    emu.set_reg(Register::A0, !0);
+                }
+            } else {
+                // FD out of bounds
+                emu.set_reg(Register::A0, !0);
+            }
+
             Ok(())
         }
         93 => {
