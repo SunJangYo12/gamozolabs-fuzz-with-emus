@@ -90,11 +90,17 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             // Get the filename bytes
             let bytes = emu.memory.peek(VirtAddr(filename),
                 fnlen, Perm(PERM_READ))?;
-            if let Ok(filename) = core::str::from_utf8(bytes) {
-                print!("Filename is {}\n", filename);
-            }
+            if bytes == b"testfn" {
+                // Return a new fd
+                emu.set_reg(Register::A0, 1024);
+            } else {
+                print!("Unkown filename: {:?}\n",
+                        core::str::from_utf8(bytes));
 
-            panic!("File name length is {}\n", fnlen);
+                // Unkown filename
+                emu.set_reg(Register::A0, !0);
+            }
+            Ok(())
         }
         57 => {
             // close()
