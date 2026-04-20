@@ -9,7 +9,7 @@ use emulator::{Emulator, Register, VmExit};
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = true;
+const VERBOSE_GUEST_PRINTS: bool = false;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -109,9 +109,6 @@ struct Statistics {
 
     /// Total number of CPU cycles spent emulating
     vm_cycles: u64,
-
-    /// Total number of CPU cycles spent handling vmexits
-    vmexit_cycles: u64,
 }
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
@@ -239,7 +236,7 @@ fn main() {
     let start = Instant::now();
 
     // Save the time stamp of start of execution
-    let start_cycles = rdtsc();
+    let _start_cycles = rdtsc();
 
     let mut last_cases = 0;
     let mut last_instrs = 0;
