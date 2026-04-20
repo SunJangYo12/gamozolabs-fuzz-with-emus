@@ -81,6 +81,10 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             emu.set_reg(Register::A0, 0);
             Ok(())
         }
+        93 => {
+            // exit()
+            Err(VmExit::Exit)
+        }
         _ => {
             panic!("Unhandled syscall {} @ {:#x}\n", num,
                     emu.reg(Register::Pc));
