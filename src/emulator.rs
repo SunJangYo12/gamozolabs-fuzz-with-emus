@@ -268,7 +268,7 @@ impl From<u32> for Utype {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum File {
     Stdin,
     Stdout,

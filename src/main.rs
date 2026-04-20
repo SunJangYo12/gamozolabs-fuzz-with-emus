@@ -5,7 +5,7 @@ pub mod emulator;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
-use emulator::{Emulator, Register, VmExit};
+use emulator::{Emulator, Register, VmExit, File};
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
@@ -51,25 +51,31 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
         }
         64 => {
             // write()
-            let fd  = emu.reg(Register::A0);
+            let fd  = emu.reg(Register::A0) as usize;
             let buf = emu.reg(Register::A1);
             let len = emu.reg(Register::A2);
 
-            if fd == 1 || fd == 2 {
-                // Writes to stdout and stderr
+            let file = emu.get_file(fd);
+            if let Some(Some(file)) = file {
+                if file == &File::Stdout ||
+                    file == &File::Stderr {
+                    // Writes to stdout and stderr
 
-                // Get access to the underlying bytes to write
-                let bytes = emu.memory.peek(VirtAddr(buf as usize),
-                    len as usize, Perm(PERM_READ))?;
+                    // Get access to the underlying bytes to write
+                    let bytes = emu.memory.peek(VirtAddr(buf as usize),
+                        len as usize, Perm(PERM_READ))?;
 
-                if VERBOSE_GUEST_PRINTS {
-                    if let Ok(st) = core::str::from_utf8(bytes) {
-                        print!("{}", st);
+                    if VERBOSE_GUEST_PRINTS {
+                        if let Ok(st) = core::str::from_utf8(bytes) {
+                            print!("{}", st);
+                        }
                     }
-                }
 
-                // Set that all bytes were read
-                emu.set_reg(Register::A0, len);
+                    // Set that all bytes were read
+                    emu.set_reg(Register::A0, len);
+                } else {
+                    panic!("Write to valid but unhandled FD");
+                }
             } else {
                 // Unkwon FD
                 emu.set_reg(Register::A0, !0);
