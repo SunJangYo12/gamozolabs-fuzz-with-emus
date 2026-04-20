@@ -48,8 +48,25 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
             Ok(())
         }
+        64 => {
+            // write()
+            let fd  = emu.reg(Register::A0);
+            let buf = emu.reg(Register::A1);
+            let len = emu.reg(Register::A2);
+
+            if fd == 1 || fd == 2 {
+                // Writes to stdout and stderr
+                // Set that all bytes were read
+                emu.set_reg(Register::A0, len);
+            } else {
+                // Unkwon FD
+                emu.set_reg(Register::A0, !0);
+            }
+            Ok(())
+        }
         _ => {
-            panic!("Unhandled syscall {}\n", num);
+            panic!("Unhandled syscall {} @ {:#x}\n", num,
+                    emu.reg(Register::Pc));
         }
     }
 }
