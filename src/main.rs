@@ -113,7 +113,7 @@ struct Statistics {
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>) {
-    const BATCH_SIZE: usize = 1000;
+    const BATCH_SIZE: usize = 1;
     loop {
         // Start a timer
         let batch_start = rdtsc();
