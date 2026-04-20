@@ -96,7 +96,13 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             // Get the filename bytes
             let bytes = emu.memory.peek(VirtAddr(filename),
                 fnlen, Perm(PERM_READ))?;
+
             if bytes == b"testfn" {
+                // Create a new file descriptor
+                let fd = emu.alloc_file();
+
+                print!("Allocate FD {}\n", fd);
+
                 // Return a new fd
                 emu.set_reg(Register::A0, 1024);
             } else {
@@ -196,7 +202,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            //panic!("Vmexit {:#x} {:#x?}\n", emu.reg(Register::Pc), _vmexit);
+            panic!("Vmexit {:#x} {:#x?}\n", emu.reg(Register::Pc), _vmexit);
             local_stats.fuzz_cases += 1;
         }
         // Get access to statistics
@@ -282,7 +288,7 @@ fn main() {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
