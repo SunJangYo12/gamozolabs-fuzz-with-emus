@@ -334,6 +334,11 @@ impl Emulator {
         self.files.extend_from_slice(&other.files);
     }
 
+    /// Get access to a file descriptor for `fd`
+    pub fn get_file(&mut self, fd: usize) -> Option<&mut Option<File>> {
+        self.files.get_mut(fd)
+    }
+
     /// Get a register from the guest
     pub fn reg(&self, register: Register) -> u64 {
         if register != Register::Zero {
