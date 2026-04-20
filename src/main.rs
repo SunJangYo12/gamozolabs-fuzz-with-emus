@@ -113,7 +113,7 @@ struct Statistics {
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>) {
-    const BATCH_SIZE: usize = 1;
+    const BATCH_SIZE: usize = 100;
     loop {
         // Start a timer
         let batch_start = rdtsc();
@@ -222,7 +222,7 @@ fn main() {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..1 { //2 thread
+    for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
