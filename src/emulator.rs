@@ -275,7 +275,7 @@ pub enum File {
     Stderr,
 
     // A file which is backed by the current fuzz input
-    FuzzInput,
+    FuzzInput { cursor: usize },
 }
 
 

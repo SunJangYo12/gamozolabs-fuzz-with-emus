@@ -81,6 +81,31 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
             Ok(())
         }
+        62 => {
+            // lseek()
+            let fd     = emu.reg(Register::A0) as usize;
+            let offset = emu.reg(Register::A1) as i64;
+            let whence = emu.reg(Register::A2) as i32;
+
+            const SEEK_SET: i32 = 0;
+            const SEEK_CUR: i32 = 1;
+            const SEEK_END: i32 = 2;
+
+            // Check if the FD is valid
+            let file = emu.get_file(fd);
+            if file.is_none() || file.as_ref().unwrap().is_none() {
+                // FD wat not valid, return out with an error
+                emu.set_reg(Register::A0, !0);
+                return Ok(());
+            }
+
+            if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+            } else {
+                unreachable!();
+            }
+
+            Ok(())
+        }
         1024 => {
             // open()
             let filename = emu.reg(Register::A0) as usize;
@@ -109,7 +134,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let file = emu.get_file(fd).unwrap();
 
                 // Mark that this file should be backed by our fuzz input
-                *file = Some(File::FuzzInput);
+                *file = Some(File::FuzzInput { cursor: 0 });
 
                 // Return a new fd
                 emu.set_reg(Register::A0, fd as u64);
@@ -164,7 +189,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 return Ok(());
             }
 
-            if let Some(Some(File::FuzzInput)) = file {
+            if let Some(Some(File::FuzzInput { .. })) = file {
                 let mut stat = Stat::default();
                 stat.st_dev = 0x803;
                 stat.st_ino = 0x81889;
