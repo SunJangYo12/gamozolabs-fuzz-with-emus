@@ -125,6 +125,25 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let fd      = emu.reg(Register::A0) as usize;
             let statbuf = emu.reg(Register::A1);
 
+            #[repr(C)]
+            #[derive(Default, Debug)]
+            struct Stat {
+                st_dev:     u64,
+                st_ino:     u64,
+                st_mode:    u32,
+                padding:    u32,
+                st_nlink:   u64,
+                st_uid:     u32,
+                st_gid:     u32,
+                st_rdev:    u64,
+                st_size:    u64,
+                st_blksize: u64,
+                st_blocks:  u64,
+                st_atime:   u64,
+                st_mtime:   u64,
+                st_ctime:   u64,
+            }
+
             // Check if the FD is valid
             let file = emu.get_file(fd);
             if file.is_none() || file.as_ref().unwrap().is_none() {
@@ -133,7 +152,39 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 return Ok(());
             }
 
-            panic!("Fstat of {:?}\n", file);
+            if let Some(Some(File::FuzzInput)) = file {
+                let mut stat = Stat::default();
+                stat.st_dev = 0x803;
+                stat.st_ino = 0x81889;
+                stat.st_mode = 0x81a4;
+                stat.st_nlink = 0x1;
+                stat.st_uid = 0x3e8;
+                stat.st_gid = 0x3e8;
+                stat.st_rdev = 0x0;
+                stat.st_size = emu.fuzz_input.len() as u64;
+                stat.st_blksize = 0x1000;
+                stat.st_blocks = (emu.fuzz_input.len() as u64 + 511) / 511;
+                stat.st_atime = 0x5f0fe246;
+                stat.st_mtime = 0x5f0fe244;
+                stat.st_ctime = 0x5f0fe244;
+
+                // Cast the stat structure to raw bytes
+                let stat = unsafe {
+                    core::slice::from_raw_parts(
+                        &stat as *const Stat as *const u8,
+                        core::mem::size_of_val(&stat))
+                };
+
+                // Write in the stat data
+                emu.memory.write_from(VirtAddr(statbuf as usize), stat)?;
+
+                // Return success
+                emu.set_reg(Register::A0, 0);
+            } else {
+                unreachable!();
+            }
+
+            Ok(())
         }
         57 => {
             // close()

@@ -288,7 +288,7 @@ pub struct Emulator {
     registers: [u64; 33],
 
     /// Fuzz input for the program
-    fuzz_input: Vec<u8>,
+    pub fuzz_input: Vec<u8>,
 
     /// File handle table (indexed by file descriptor)
     files: Vec<Option<File>>,
