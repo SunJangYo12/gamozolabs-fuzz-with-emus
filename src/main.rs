@@ -125,23 +125,33 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let fd      = emu.reg(Register::A0) as usize;
             let statbuf = emu.reg(Register::A1);
 
+            // Stat structure from kernel_stat64
             #[repr(C)]
             #[derive(Default, Debug)]
             struct Stat {
                 st_dev:     u64,
                 st_ino:     u64,
                 st_mode:    u32,
-                padding:    u32,
-                st_nlink:   u64,
+                st_nlink:   u32,
                 st_uid:     u32,
                 st_gid:     u32,
                 st_rdev:    u64,
-                st_size:    u64,
-                st_blksize: u64,
-                st_blocks:  u64,
-                st_atime:   u64,
-                st_mtime:   u64,
-                st_ctime:   u64,
+                __pad1:     u64,
+
+                st_size:    i64,
+                st_blksize: i64,
+                __pad2:     i32,
+
+                st_blocks:  i64,
+
+                st_atime:       u64,
+                st_atimensec:   u64,
+                st_mtime:       u64,
+                st_mtimensec:   u64,
+                st_ctime:       u64,
+                st_ctimensec:   u64,
+
+                __glibc_reservd: [i32; 2],
             }
 
             // Check if the FD is valid
@@ -161,9 +171,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 stat.st_uid = 0x3e8;
                 stat.st_gid = 0x3e8;
                 stat.st_rdev = 0x0;
-                stat.st_size = emu.fuzz_input.len() as u64;
+                stat.st_size = emu.fuzz_input.len() as i64;
                 stat.st_blksize = 0x1000;
-                stat.st_blocks = (emu.fuzz_input.len() as u64 + 511) / 511;
+                stat.st_blocks = (emu.fuzz_input.len() as i64 + 511) / 511;
                 stat.st_atime = 0x5f0fe246;
                 stat.st_mtime = 0x5f0fe244;
                 stat.st_ctime = 0x5f0fe244;
