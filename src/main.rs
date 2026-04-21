@@ -91,6 +91,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             const SEEK_CUR: i32 = 1;
             const SEEK_END: i32 = 2;
 
+            // Get the length of the fuzz input
+            let fuzz_input_len = emu.fuzz_input.len();
+
             // Check if the FD is valid
             let file = emu.get_file(fd);
             if file.is_none() || file.as_ref().unwrap().is_none() {
@@ -100,6 +103,30 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
 
             if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+                let new_cursor = match whence {
+                    SEEK_SET => offset,
+                    SEEK_CUR => (*cursor as i64).saturating_add(offset),
+                    SEEK_END => (fuzz_input_len as i64)
+                        .saturating_add(offset),
+                    _ => {
+                        // Invalid whence, return error
+                        emu.set_reg(Register::A0, !0);
+                        return Ok(());
+                    }
+                };
+
+                // Make sure the cursor falls in bounds of [0, file_size]
+                let new_cursor = core::cmp::max(0i64, new_cursor);
+                let new_cursor = 
+                    core::cmp::min(new_cursor, fuzz_input_len as i64);
+
+                // Update the cursor
+                *cursor = new_cursor as usize;
+
+                print!("Lseek ret {}\n", *cursor);
+
+                // Return the new cursor position
+                emu.set_reg(Register::A0, new_cursor as u64);
             } else {
                 unreachable!();
             }
