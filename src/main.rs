@@ -87,6 +87,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let flags    = emu.reg(Register::A1);
             let _mode    = emu.reg(Register::A2);
 
+            assert!(flags == 0, "Currently we only handle O_RDONLY");
+
             // Determine the length the filename
             let mut fnlen = 0;
             while emu.memory.read::<u8>(VirtAddr(filename + fnlen))? != 0 {
