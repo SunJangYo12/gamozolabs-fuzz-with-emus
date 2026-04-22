@@ -112,8 +112,6 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Update the cursor
                 *cursor = result_cursor;
 
-                print!("Read {} bytes\n", bread);
-
                 // Return number of bytes read
                 emu.set_reg(Register::A0, bread as u64);
             } else {
@@ -378,7 +376,11 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            panic!("Vmexit {:#x} {:#x?}\n", emu.reg(Register::Pc), _vmexit);
+            if _vmexit != VmExit::Exit {
+                panic!("Vmexit {:#x} {:#x?}\n",
+                    emu.reg(Register::Pc), _vmexit);
+            }
+
             local_stats.fuzz_cases += 1;
         }
         // Get access to statistics

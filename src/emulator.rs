@@ -56,7 +56,7 @@ impl From<u32> for Register {
 }
 
 /// Reasons why VM exited
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VmExit {
     /// The VM exited due to a syscall intruction
     Syscall,
