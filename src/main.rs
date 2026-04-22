@@ -159,8 +159,6 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Update the cursor
                 *cursor = new_cursor as usize;
 
-                print!("Lseek ret {}\n", *cursor);
-
                 // Return the new cursor position
                 emu.set_reg(Register::A0, new_cursor as u64);
             } else {
@@ -354,7 +352,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
 
-            emu.fuzz_input.extend_from_slice(b"asdf");
+            emu.fuzz_input.extend_from_slice(include_bytes!("../xauth"));
 
             let _vmexit = loop {
                 let it = rdtsc();
