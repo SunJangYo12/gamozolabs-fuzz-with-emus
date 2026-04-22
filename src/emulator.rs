@@ -268,6 +268,7 @@ impl From<u32> for Utype {
     }
 }
 
+/// An open file
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum File {
     Stdin,
@@ -278,6 +279,16 @@ pub enum File {
     FuzzInput { cursor: usize },
 }
 
+/// An list of all open files
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Files(Vec<Option<File>>);
+
+impl Files {
+    /// Get access to a file descriptor for `fd`
+    pub fn get_file(&mut self, fd: usize) -> Option<&mut Option<File>> {
+        self.0.get_mut(fd)
+    }
+}
 
 /// All the state of the emulated system
 pub struct Emulator {
@@ -288,10 +299,10 @@ pub struct Emulator {
     registers: [u64; 33],
 
     /// Fuzz input for the program
-    pub fuzz_input: Option<Vec<u8>>,
+    pub fuzz_input: Vec<u8>,
 
     /// File handle table (indexed by file descriptor)
-    files: Vec<Option<File>>,
+    pub files: Files,
 }
 
 impl Emulator {
@@ -300,12 +311,12 @@ impl Emulator {
         Emulator {
             memory:     Mmu::new(size),
             registers:  [0; 33],
-            fuzz_input: Some(Vec::new()),
-            files: vec![
+            fuzz_input: Vec::new(),
+            files: Files(vec![
                 Some(File::Stdin),
                 Some(File::Stdout),
                 Some(File::Stderr),
-            ],
+            ]),
         }
     }
 
@@ -314,7 +325,7 @@ impl Emulator {
         Emulator {
             memory:     self.memory.fork(),
             registers:  self.registers.clone(),
-            fuzz_input: Some(self.fuzz_input.as_ref().unwrap().clone()),
+            fuzz_input: self.fuzz_input.clone(),
             files:      self.files.clone(),
         }
     }
@@ -329,26 +340,21 @@ impl Emulator {
         self.registers = other.registers;
 
         // Reset file state
-        self.files.clear();
-        self.files.extend_from_slice(&other.files);
-    }
-
-    /// Get access to a file descriptor for `fd`
-    pub fn get_file(&mut self, fd: usize) -> Option<&mut Option<File>> {
-        self.files.get_mut(fd)
+        self.files.0.clear();
+        self.files.0.extend_from_slice(&other.files.0);
     }
 
     /// Allocate a new file descriptor
     pub fn alloc_file(&mut self) -> usize {
-        for (fd, file) in self.files.iter().enumerate() {
+        for (fd, file) in self.files.0.iter().enumerate() {
             if file.is_none() {
                 // File not present, we can reuse the FD
                 return fd;
             }
         }
         // If we got here, no FD is present, create a new one
-        let fd = self.files.len();
-        self.files.push(None);
+        let fd = self.files.0.len();
+        self.files.0.push(None);
         fd
     }
 

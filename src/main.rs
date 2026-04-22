@@ -55,7 +55,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let buf = emu.reg(Register::A1);
             let len = emu.reg(Register::A2);
 
-            let file = emu.get_file(fd);
+            let file = emu.files.get_file(fd);
             if let Some(Some(file)) = file {
                 if file == &File::Stdout || file == &File::Stderr {
                     // Writes to stdout and stderr
@@ -87,8 +87,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             let buf = emu.reg(Register::A1) as usize;
             let len = emu.reg(Register::A2) as usize;
 
+
             // Check if the FD is valid
-            let file = emu.get_file(fd);
+            let file = emu.files.get_file(fd);
             if file.is_none() || file.as_ref().unwrap().is_none() {
                 // FD wat not valid, return out with an error
                 emu.set_reg(Register::A0, !0);
@@ -96,6 +97,24 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
 
             if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+                // Compute the ending cursor from this read
+                let result_cursor = core::cmp::min(
+                    cursor.saturating_add(len),
+                    emu.fuzz_input.len());
+
+                // Write in the bytes
+                emu.memory.write_from(VirtAddr(buf),
+                    &emu.fuzz_input[*cursor..result_cursor])?;
+
+                // Compute bytes read
+                let bread = result_cursor - *cursor;
+
+                // Update the cursor
+                *cursor = result_cursor;
+
+
+                // Return number of bytes read
+                emu.set_reg(Register::A0, bread as u64);
             } else {
                 unreachable!();
             }
@@ -112,11 +131,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             const SEEK_CUR: i32 = 1;
             const SEEK_END: i32 = 2;
 
-            // Get the length of the fuzz input
-            let fuzz_input_len = emu.fuzz_input.as_ref().unwrap().len();
-
             // Check if the FD is valid
-            let file = emu.get_file(fd);
+            let file = emu.files.get_file(fd);
             if file.is_none() || file.as_ref().unwrap().is_none() {
                 // FD wat not valid, return out with an error
                 emu.set_reg(Register::A0, !0);
@@ -127,7 +143,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let new_cursor = match whence {
                     SEEK_SET => offset,
                     SEEK_CUR => (*cursor as i64).saturating_add(offset),
-                    SEEK_END => (fuzz_input_len as i64)
+                    SEEK_END => (emu.fuzz_input.len() as i64)
                         .saturating_add(offset),
                     _ => {
                         // Invalid whence, return error
@@ -139,7 +155,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Make sure the cursor falls in bounds of [0, file_size]
                 let new_cursor = core::cmp::max(0i64, new_cursor);
                 let new_cursor = 
-                    core::cmp::min(new_cursor, fuzz_input_len as i64);
+                    core::cmp::min(new_cursor, emu.fuzz_input.len() as i64);
 
                 // Update the cursor
                 *cursor = new_cursor as usize;
@@ -179,7 +195,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Get access to file, unwarp here is safe because there's
                 // no way the file is not a valid FD if we got it from our
                 // own APIs
-                let file = emu.get_file(fd).unwrap();
+                let file = emu.files.get_file(fd).unwrap();
 
                 // Mark that this file should be backed by our fuzz input
                 *file = Some(File::FuzzInput { cursor: 0 });
@@ -230,7 +246,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
 
             // Check if the FD is valid
-            let file = emu.get_file(fd);
+            let file = emu.files.get_file(fd);
             if file.is_none() || file.as_ref().unwrap().is_none() {
                 // FD wat not valid, return out with an error
                 emu.set_reg(Register::A0, !0);
@@ -238,8 +254,6 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
 
             if let Some(Some(File::FuzzInput { .. })) = file {
-                let fuzz_input_len = emu.fuzz_input.as_ref().unwrap().len();
-
                 let mut stat = Stat::default();
                 stat.st_dev = 0x803;
                 stat.st_ino = 0x81889;
@@ -248,9 +262,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 stat.st_uid = 0x3e8;
                 stat.st_gid = 0x3e8;
                 stat.st_rdev = 0x0;
-                stat.st_size = fuzz_input_len as i64;
+                stat.st_size = emu.fuzz_input.len() as i64;
                 stat.st_blksize = 0x1000;
-                stat.st_blocks = (fuzz_input_len as i64 + 511) / 511;
+                stat.st_blocks = (emu.fuzz_input.len() as i64 + 511) / 511;
                 stat.st_atime = 0x5f0fe246;
                 stat.st_mtime = 0x5f0fe244;
                 stat.st_ctime = 0x5f0fe244;
@@ -277,7 +291,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             // close()
             let fd = emu.reg(Register::A0) as usize;
 
-            if let Some(file) = emu.get_file(fd) {
+            if let Some(file) = emu.files.get_file(fd) {
                 if file.is_some() {
                     // File was present and currently open, close it
 
@@ -341,7 +355,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
 
-            emu.fuzz_input.as_mut().unwrap().extend_from_slice(b"asdf");
+            emu.fuzz_input.extend_from_slice(b"asdf");
 
             let _vmexit = loop {
                 let it = rdtsc();
