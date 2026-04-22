@@ -288,7 +288,7 @@ pub struct Emulator {
     registers: [u64; 33],
 
     /// Fuzz input for the program
-    pub fuzz_input: Vec<u8>,
+    pub fuzz_input: Option<Vec<u8>>,
 
     /// File handle table (indexed by file descriptor)
     files: Vec<Option<File>>,
@@ -300,7 +300,7 @@ impl Emulator {
         Emulator {
             memory:     Mmu::new(size),
             registers:  [0; 33],
-            fuzz_input: Vec::new(),
+            fuzz_input: Some(Vec::new()),
             files: vec![
                 Some(File::Stdin),
                 Some(File::Stdout),
@@ -314,7 +314,7 @@ impl Emulator {
         Emulator {
             memory:     self.memory.fork(),
             registers:  self.registers.clone(),
-            fuzz_input: self.fuzz_input.clone(),
+            fuzz_input: Some(self.fuzz_input.as_ref().unwrap().clone()),
             files:      self.files.clone(),
         }
     }

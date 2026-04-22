@@ -81,6 +81,27 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
             Ok(())
         }
+        63 => {
+            // read()
+            let fd  = emu.reg(Register::A0) as usize;
+            let buf = emu.reg(Register::A1) as usize;
+            let len = emu.reg(Register::A2) as usize;
+
+            // Check if the FD is valid
+            let file = emu.get_file(fd);
+            if file.is_none() || file.as_ref().unwrap().is_none() {
+                // FD wat not valid, return out with an error
+                emu.set_reg(Register::A0, !0);
+                return Ok(());
+            }
+
+            if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+            } else {
+                unreachable!();
+            }
+
+            Ok(())
+        }
         62 => {
             // lseek()
             let fd     = emu.reg(Register::A0) as usize;
@@ -92,7 +113,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             const SEEK_END: i32 = 2;
 
             // Get the length of the fuzz input
-            let fuzz_input_len = emu.fuzz_input.len();
+            let fuzz_input_len = emu.fuzz_input.as_ref().unwrap().len();
 
             // Check if the FD is valid
             let file = emu.get_file(fd);
@@ -217,6 +238,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
 
             if let Some(Some(File::FuzzInput { .. })) = file {
+                let fuzz_input_len = emu.fuzz_input.as_ref().unwrap().len();
+
                 let mut stat = Stat::default();
                 stat.st_dev = 0x803;
                 stat.st_ino = 0x81889;
@@ -225,9 +248,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 stat.st_uid = 0x3e8;
                 stat.st_gid = 0x3e8;
                 stat.st_rdev = 0x0;
-                stat.st_size = emu.fuzz_input.len() as i64;
+                stat.st_size = fuzz_input_len as i64;
                 stat.st_blksize = 0x1000;
-                stat.st_blocks = (emu.fuzz_input.len() as i64 + 511) / 511;
+                stat.st_blocks = (fuzz_input_len as i64 + 511) / 511;
                 stat.st_atime = 0x5f0fe246;
                 stat.st_mtime = 0x5f0fe244;
                 stat.st_ctime = 0x5f0fe244;
@@ -317,6 +340,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             let it = rdtsc();
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
+
+            emu.fuzz_input.as_mut().unwrap().extend_from_slice(b"asdf");
 
             let _vmexit = loop {
                 let it = rdtsc();
