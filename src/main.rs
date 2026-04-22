@@ -112,6 +112,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Update the cursor
                 *cursor = result_cursor;
 
+                print!("Read {} bytes\n", bread);
 
                 // Return number of bytes read
                 emu.set_reg(Register::A0, bread as u64);
