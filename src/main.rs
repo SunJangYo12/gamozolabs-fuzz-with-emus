@@ -1,6 +1,7 @@
 pub mod primitive;
 pub mod mmu;
 pub mod emulator;
+pub mod jitcache;
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
