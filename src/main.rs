@@ -9,7 +9,7 @@ use emulator::{Emulator, Register, VmExit, File};
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = false;
+const VERBOSE_GUEST_PRINTS: bool = true;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -278,11 +278,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
                 // Write in the stat data
                 emu.memory.write_from(VirtAddr(statbuf as usize), stat)?;
-
-                // Return success
-                emu.set_reg(Register::A0, 0);
             } else {
-                unreachable!();
+                // Error
+                emu.set_reg(Register::A0, !0);
             }
 
             Ok(())
