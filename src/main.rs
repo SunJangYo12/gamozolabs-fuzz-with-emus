@@ -109,6 +109,9 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 // Compute bytes read
                 let bread = result_cursor - *cursor;
 
+                print!("Read offset {} for {} bytes\n",
+                        *cursor, bread);
+
                 // Update the cursor
                 *cursor = result_cursor;
 
