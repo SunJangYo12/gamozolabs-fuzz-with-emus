@@ -209,7 +209,15 @@ impl Mmu {
         // Check permissions
         for (idx, &perm) in perms.iter().enumerate() {
             if (perm.0 & exp_perms.0) != exp_perms.0 {
-                return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
+                if exp_perms.0 == PERM_READ && (perm.0 & PERM_RAW) != 0 {
+                    // If we were attempting a normal read, and the readable
+                    // memory was unreadable but had the RAW bit set, report
+                    // it as an uninitialized memory access rether than a
+                    // read access
+                    return Err(VmExit::UninitFault(VirtAddr(addr.0 + idx)));
+                } else {
+                    return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
+                }
             }
         }
 
@@ -231,7 +239,15 @@ impl Mmu {
         // Check permissions
         for (idx, &perm) in perms.iter().enumerate() {
             if (perm.0 & exp_perms.0) != exp_perms.0 {
-                return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
+                if exp_perms.0 == PERM_READ && (perm.0 & PERM_RAW) != 0 {
+                    // If we were attempting a normal read, and the readable
+                    // memory was unreadable but had the RAW bit set, report
+                    // it as an uninitialized memory access rether than a
+                    // read access
+                    return Err(VmExit::UninitFault(VirtAddr(addr.0 + idx)));
+                } else {
+                    return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
+                }
             }
         }
 

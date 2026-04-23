@@ -77,6 +77,10 @@ pub enum VmExit {
     /// An read of `VirtAddr` failed due to missong permissions
     ReadFault(VirtAddr),
 
+    /// An read of memory which is uninitialized, but otherwise readable failed
+    /// at `VirtAddr`
+    UninitFault(VirtAddr),
+
     /// An write of `VirtAddr` failed due to missong permissions
     WriteFault(VirtAddr),
 }
