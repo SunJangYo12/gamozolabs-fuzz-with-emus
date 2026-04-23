@@ -375,7 +375,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if _vmexit != VmExit::Exit {
+            if true || _vmexit != VmExit::Exit {
                 panic!("Vmexit {:#x} {:#x?}\n",
                     emu.reg(Register::Pc), _vmexit);
             }
