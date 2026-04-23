@@ -9,7 +9,7 @@ use emulator::{Emulator, Register, VmExit, File};
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = true;
+const VERBOSE_GUEST_PRINTS: bool = false;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -108,9 +108,6 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
                 // Compute bytes read
                 let bread = result_cursor - *cursor;
-
-                print!("Read offset {} for {} bytes\n",
-                        *cursor, bread);
 
                 // Update the cursor
                 *cursor = result_cursor;
@@ -340,7 +337,7 @@ struct Statistics {
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>) {
-    const BATCH_SIZE: usize = 100;
+    const BATCH_SIZE: usize = 1;
     loop {
         // Start a timer
         let batch_start = rdtsc();
@@ -375,7 +372,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if true || _vmexit != VmExit::Exit {
+            if _vmexit != VmExit::Exit {
                 panic!("Vmexit {:#x} {:#x?}\n",
                     emu.reg(Register::Pc), _vmexit);
             }
