@@ -1,7 +1,7 @@
 //! A 64-bit RISC-V RV64i interpreter
 
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC};
 use crate::jitcache::JitCache;
 
@@ -310,7 +310,7 @@ pub struct Emulator {
     pub files: Files,
 
     /// JIT cache, If we are using a JIT
-    jit_cache: Option<Arc<Mutex<JitCache>>>,
+    jit_cache: Option<Arc<JitCache>>,
 }
 
 impl Emulator {
@@ -341,7 +341,7 @@ impl Emulator {
     }
 
     /// Enable the JIT and use a specified `JitCache`
-    pub fn enable_jit(mut self, jit_cache: Arc<Mutex<JitCache>>) -> Self {
+    pub fn enable_jit(mut self, jit_cache: Arc<JitCache>) -> Self {
         self.jit_cache = Some(jit_cache);
         self
     }
@@ -393,8 +393,8 @@ impl Emulator {
 
     // Run the VM using either the emulator or the JIT
     pub fn run(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
-        if let Some(jit_cache) = &self.jit_cache {
-            panic!("JIT not implemented");
+        if let Some(jit_cache) = &self.jit_cache { // kalau `self.jit_cache` berisi sesuatu (Some), ambil isinya ke variable jit_cache(nama bebas)
+            self.run_jit(instrs_execed)
         } else {
             self.run_emu(instrs_execed)
         }
@@ -856,5 +856,20 @@ impl Emulator {
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
     }
+
+    /// Run the VM using the JIT
+    pub fn run_jit(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+        // Get access to the JIT cache
+        let jit_cache = self.jit_cache.as_ref().unwrap();
+
+        loop {
+            // Get the current PC
+            let pc = self.reg(Register::Pc);
+            let jit = jit_cache.lookup(VirtAddr(pc as usize));
+        }
+
+        Ok(())
+    }
+
 }
 
