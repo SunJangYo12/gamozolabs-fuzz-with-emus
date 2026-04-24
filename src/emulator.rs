@@ -1,7 +1,9 @@
 //! A 64-bit RISC-V RV64i interpreter
 
 use std::fmt;
+use std::sync::{Arc, Mutex};
 use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC};
+use crate::jitcache::JitCache;
 
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -306,6 +308,9 @@ pub struct Emulator {
 
     /// File handle table (indexed by file descriptor)
     pub files: Files,
+
+    /// JIT cache, If we are using a JIT
+    jit_cache: Option<Arc<Mutex<JitCache>>>,
 }
 
 impl Emulator {
@@ -320,6 +325,7 @@ impl Emulator {
                 Some(File::Stdout),
                 Some(File::Stderr),
             ]),
+            jit_cache: None,
         }
     }
 
@@ -330,7 +336,14 @@ impl Emulator {
             registers:  self.registers.clone(),
             fuzz_input: self.fuzz_input.clone(),
             files:      self.files.clone(),
+            jit_cache : self.jit_cache.clone(),
         }
+    }
+
+    /// Enable the JIT and use a specified `JitCache`
+    pub fn enable_jit(mut self, jit_cache: Arc<Mutex<JitCache>>) -> Self {
+        self.jit_cache = Some(jit_cache);
+        self
     }
 
     /// Reset the state of `self` to `other`, assuming that `self`

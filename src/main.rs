@@ -401,7 +401,8 @@ fn main() {
     let mut jit_cache =
         Arc::new(Mutex::new(JitCache::new(VirtAddr(1024 * 1024))));
 
-    let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
+    // Create an emulator using the JIT
+    let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
 
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
