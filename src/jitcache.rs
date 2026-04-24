@@ -72,8 +72,9 @@ impl JitCache {
     pub fn new(max_guest_addr: VirtAddr) -> Self {
         JitCache {
             // Allocate a zeroed out block cache   
-            blocks:
-                vec![0usize; (max_guest_addr.0 + 3) / 4].into_boxed_slice(),
+            blocks: (0..(max_guest_addr.0 + 3) / 4).map(|_| {
+                AtomicUsize::new(0)
+            }).collect::<Vec<_>>().into_boxed_slice(),
             jit: Mutex::new((alloc_rwx(16 * 1024 * 1024), 0)),
         }
     }
@@ -99,7 +100,7 @@ impl JitCache {
 
         // Get exclusive access to the JIT
         // Ambil lock, kalau ada thread lain tunggu, setelah dapat bisa akses data
-        let jit = self.jit.lock().unwrap();
+        let mut jit = self.jit.lock().unwrap();
 
         // Now that we have the lock, check if there's already an existing
         // mapping. If there is not, there is no way one could show up while
@@ -107,6 +108,26 @@ impl JitCache {
         if let Some(existing) = self.lookup(addr) {
             return existing;
         }
+
+        // Number of remaining bytes in the JIT storage
+        let jit_inuse = jit.1;
+        let jit_remain = jit.0.len() - jit_inuse;
+        assert!(code.len() > jit_remain, "Out of space in JIT");
+
+        // Copy the new code into the JIT
+        jit.0[jit_inuse..jit_inuse + code.len()].copy_from_slice(code);
+
+        // Compute the address of the JIT we're inserting
+        let new_addr = jit.0[jit_inuse..].as_ptr() as usize;
+
+        // Update the JIT lookup address
+        self.blocks[addr.0 / 4].store(new_addr, Ordering::SeqCst);
+
+        // Update the in use for the JIT
+        jit.1 += code.len();
+
+        // Return the newly allocated JIT
+        new_addr
     }
 }
 
