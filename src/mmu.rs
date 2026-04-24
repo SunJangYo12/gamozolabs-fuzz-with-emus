@@ -134,7 +134,7 @@ impl Mmu {
 
     /// Apply permissions to a region of memory
     pub fn set_permissions(&mut self, addr: VirtAddr, size: usize,
-                            mut perm: Perm) -> Option<()> {
+                            perm: Perm) -> Option<()> {
         // Apply permissions
         self.permissions.get_mut(addr.0..addr.0.checked_add(size)?)?
             .iter_mut().for_each(|x| *x = perm);

@@ -398,7 +398,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
 fn main() {
     // Create a JIT cache
-    let mut jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
+    let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
 
     // Create an emulator using the JIT
     let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
