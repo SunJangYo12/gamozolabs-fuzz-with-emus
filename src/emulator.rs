@@ -862,18 +862,22 @@ impl Emulator {
         loop {
             // Get the current PC
             let pc  = self.reg(Register::Pc);
-            let jit = self.jit_cache.as_ref().unwrap()
-                .lookup(VirtAddr(pc as usize));
+            let (jit_addr, num_blocks) = {
+                let jit_cache = self.jit_cache.as_ref().unwrap();
+                (
+                    jit_cache.lookup(VirtAddr(pc as usize)),
+                    jit_cache.num_blocks()
+                )
+            };
 
-            if jit.is_none() {
+            if jit_addr.is_none() {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
 
-                self.generate_jit(VirtAddr(pc as usize))?;
+                self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
                 panic!("WHOA");
             }
-
             // Execute the JIT
         }
 
@@ -881,7 +885,8 @@ impl Emulator {
     }
 
     // Generate the assembly string for `pc` during JIT
-    pub fn generate_jit(&mut self, pc: VirtAddr) -> Result<String, VmExit> {
+    pub fn generate_jit(&mut self, pc: VirtAddr, num_blocks: usize)
+            -> Result<String, VmExit> {
         let mut asm = String::new();
 
         'next_inst: loop {
@@ -916,10 +921,23 @@ impl Emulator {
                 0b1101111 => {
                     // JAL
                     let inst = Jtype::from(inst);
-                    self.set_reg(inst.rd, pc.wrapping_add(4));
-                    self.set_reg(Register::Pc,
-                                 pc.wrapping_add(inst.imm as i64 as u64));
-                    continue 'next_inst;
+
+                    // Compute the return address
+                    let ret = pc.wrapping_add(4);
+
+                    // Compute the branch target
+                    let target = pc.wrapping_add(inst.imm as i64 as u64);
+                    asm += &format!(r#"
+                        mov rax, {ret}
+                        mov [r13 + {rd}*8], rax
+
+                        mov rax, {target}
+                        shr rax, 2
+                        cmp rax, {num_blocks}
+                        mov rax, [r14, rax*8]
+                    "#, rd = inst.rd as usize, ret = ret,
+                        target = target, num_blocks = num_blocks);
+                    break 'next_inst;
                 }
                 0b1100111 => {
                     // We know it's an Itype
@@ -1340,7 +1358,7 @@ impl Emulator {
             // Update PC to the next intruction
             self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
+        Ok(asm)
     }
-
 }
 

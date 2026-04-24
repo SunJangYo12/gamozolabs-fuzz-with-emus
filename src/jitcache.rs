@@ -79,6 +79,11 @@ impl JitCache {
         }
     }
 
+    /// Return the maximum number of blocks this `JitCache` can translate
+    pub fn num_blocks(&self) -> usize {
+        self.blocks.len()
+    }
+
     /// Look up the JIT address for a given guest address
     pub fn lookup(&self, addr: VirtAddr) -> Option<usize> {
         // Make sure the address is aligned
