@@ -898,14 +898,18 @@ impl Emulator {
                     // LUI
                     let inst = Utype::from(inst);
                     asm += &format!(r#"
-                        mov [r13 + {}*8], {}
-                    "#, inst.rd as usize, inst.imm);
+                        mov [r13 + {rd}*8], {imm}
+                    "#, rd = inst.rd as usize, imm = inst.imm);
                 }
                 0b0010111 => {
                     // AUIPC
                     let inst = Utype::from(inst);
-                    self.set_reg(inst.rd,
-                                 (inst.imm as i64 as u64).wrapping_add(pc));
+
+                    let val = (inst.imm as i64 as u64).wrapping_add(pc);
+                    asm += &format!(r#"
+                        mov rax, {imm}
+                        mov [r13 + {rd}*8], rax
+                    "#, rd = inst.rd as usize, imm = val);
                 }
                 0b1101111 => {
                     // JAL
