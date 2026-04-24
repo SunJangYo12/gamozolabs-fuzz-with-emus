@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::mmu::VirtAddr;
 
 #[cfg(target_os="windows")]
@@ -49,13 +51,10 @@ pub struct JitCache {
     ///
     /// The blocks are referenced by the guest virtual address divided by 4
     /// because all RISCV-V instructions are 4 bytes (for the non-compressed variant)
-    blocks: Box<[usize]>,
+    blocks: Box<[AtomicUsize]>,
 
     /// The raw JIT RWX backing
-    jit: &'static mut [u8],
-
-    /// Number of bytes in use in `jit`
-    inuse: usize,
+    jit: Mutex<(&'static mut [u8], usize)>,
 }
 
 // JIT calling convention
@@ -75,8 +74,7 @@ impl JitCache {
             // Allocate a zeroed out block cache   
             blocks:
                 vec![0usize; (max_guest_addr.0 + 3) / 4].into_boxed_slice(),
-            jit: alloc_rwx(16 * 1024 * 1024),
-            inuse: 0,
+            jit: Mutex::new((alloc_rwx(16 * 1024 * 1024), 0)),
         }
     }
 
@@ -85,11 +83,30 @@ impl JitCache {
         // Make sure the address is aligned
         assert!(addr.0 & 3 == 0, "Unaligned code address to JIT lookup");
 
-        let addr = self.blocks[addr.0 / 4];
+        let addr = self.blocks[addr.0 / 4].load(Ordering::SeqCst);
         if addr == 0 {
             None
         } else {
             Some(addr)
         }
     }
+
+    /// Update the JIT for a given virtual address, returns the JIT address
+    /// of the new (or exiting) JIT corresponding to `addr`
+    pub fn add_mapping(&self, addr: VirtAddr, code: &[u8]) -> usize {
+       // Make sure the address is aligned
+        assert!(addr.0 & 3 == 0, "Unaligned code address to JIT lookup");
+
+        // Get exclusive access to the JIT
+        // Ambil lock, kalau ada thread lain tunggu, setelah dapat bisa akses data
+        let jit = self.jit.lock().unwrap();
+
+        // Now that we have the lock, check if there's already an existing
+        // mapping. If there is not, there is no way one could show up while
+        // we have the lock held, thus we can safely continue from this point.
+        if let Some(existing) = self.lookup(addr) {
+            return existing;
+        }
+    }
 }
+
