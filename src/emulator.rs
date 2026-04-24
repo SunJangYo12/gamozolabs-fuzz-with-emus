@@ -391,7 +391,17 @@ impl Emulator {
         }
     }
 
+    // Run the VM using either the emulator or the JIT
     pub fn run(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+        if let Some(jit_cache) = &self.jit_cache {
+            panic!("JIT not implemented");
+        } else {
+            self.run_emu(instrs_execed)
+        }
+    }
+
+    // Run the VM using the emulator
+    pub fn run_emu(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
