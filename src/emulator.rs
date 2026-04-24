@@ -866,6 +866,10 @@ impl Emulator {
             // Get the current PC
             let pc = self.reg(Register::Pc);
             let jit = jit_cache.lookup(VirtAddr(pc as usize));
+
+            let jit = jit.unwrap_or_else(|| {
+                panic!("JIT missed cache, need to JIT {:#x}\n", pc);
+            });
         }
 
         Ok(())
