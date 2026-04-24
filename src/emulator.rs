@@ -898,7 +898,7 @@ impl Emulator {
                     // LUI
                     let inst = Utype::from(inst);
                     asm += &format!(r#"
-                        mov [r13 + {rd}*8], {imm}
+                        mov [r13 + {rd}*8], {imm:x}
                     "#, rd = inst.rd as usize, imm = inst.imm);
                 }
                 0b0010111 => {
@@ -907,7 +907,7 @@ impl Emulator {
 
                     let val = (inst.imm as i64 as u64).wrapping_add(pc);
                     asm += &format!(r#"
-                        mov rax, {imm}
+                        mov rax, {imm:x}
                         mov [r13 + {rd}*8], rax
                     "#, rd = inst.rd as usize, imm = val);
 
