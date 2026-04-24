@@ -910,6 +910,8 @@ impl Emulator {
                         mov rax, {imm}
                         mov [r13 + {rd}*8], rax
                     "#, rd = inst.rd as usize, imm = val);
+
+                    print!("JIT is now\n{}\n", asm);
                 }
                 0b1101111 => {
                     // JAL
