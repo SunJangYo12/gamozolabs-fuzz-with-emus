@@ -65,6 +65,9 @@ pub struct JitCache {
 // r12 - Dirty index for the dirty list
 // r13 - Pointer to emu.registers
 // r14 - Pointer to the base of jitcache.blocks
+//
+// JIT return code (in rax)
+// 1 - branch resolution issue, rbx = PC that was not present
 
 impl JitCache {
     /// Allocates a new `JitCache` which is capable of handling up to

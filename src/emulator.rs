@@ -65,6 +65,9 @@ pub enum VmExit {
     /// The vm exited cleanly as requested by the VM
     Exit,
 
+    /// A branch occurred to a location outside of the JIT cache region
+    JitOob,
+
     /// An integer overflow occured during a syscall due to bad supplied
     /// arguments by the program
     SyscallIntegerOverflow,
@@ -927,16 +930,31 @@ impl Emulator {
 
                     // Compute the branch target
                     let target = pc.wrapping_add(inst.imm as i64 as u64);
+
+                    if (target / 4) >= num_blocks as u64 {
+                        // Branch target is out of bounds
+                        return Err(VmExit::JitOob);
+                    }
+
                     asm += &format!(r#"
                         mov rax, {ret}
                         mov [r13 + {rd}*8], rax
 
-                        mov rax, {target}
-                        shr rax, 2
-                        cmp rax, {num_blocks}
-                        mov rax, [r14, rax*8]
+                        mov  rax, [r14 + {target}]
+                        test rax, rax
+                        jz   .jit_resolve
+
+                        jmp rax
+
+                        .jit_resolve:
+                        mov rax, 1
+                        mov rbx, {target_pc}
+                        ret
+
                     "#, rd = inst.rd as usize, ret = ret,
-                        target = target, num_blocks = num_blocks);
+                        target_pc = target,
+                        target = (target / 4) * 8);
+
                     break 'next_inst;
                 }
                 0b1100111 => {
