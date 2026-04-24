@@ -865,14 +865,14 @@ impl Emulator {
             let jit = self.jit_cache.as_ref().unwrap()
                 .lookup(VirtAddr(pc as usize));
 
-            let jit = jit.unwrap_or_else(|| {
+            if jit.is_none() {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
 
-                self.generate_jit(VirtAddr(pc as usize));
+                self.generate_jit(VirtAddr(pc as usize))?;
                 panic!("WHOA");
-            });
+            }
 
             // Execute the JIT
         }
