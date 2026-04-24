@@ -897,7 +897,9 @@ impl Emulator {
                 0b0110111 => {
                     // LUI
                     let inst = Utype::from(inst);
-                    self.set_reg(inst.rd, inst.imm as i64 as u64);
+                    asm += &format!(r#"
+                        mov [r13 + {}*8], {}
+                    "#, inst.rd as usize, inst.imm);
                 }
                 0b0010111 => {
                     // AUIPC
