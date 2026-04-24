@@ -58,6 +58,15 @@ struct JitCache {
     inuse: usize,
 }
 
+// JIT calling convention
+// r8  - Pointer to the base of mmu.memory
+// r9  - Pointer to the base of mmu.permissions
+// r10 - Pointer to the base of mmu.dirty
+// r11 - Pointer to the base of mmu.dirty_bitmap
+// r12 - Dirty index for the dirty list
+// r13 - Pointer to emu.registers
+// r14 - Pointer to the base of jitcache.blocks
+
 impl JitCache {
     /// Allocates a new `JitCache` which is capable of handling up to
     /// `max_guest_addr` in executable code.
@@ -68,6 +77,19 @@ impl JitCache {
                 vec![0usize; (max_guest_addr.0 + 3) / 4].into_boxed_slice(),
             jit: alloc_rwx(16 * 1024 * 1024),
             inuse: 0,
+        }
+    }
+
+    /// Look up the JIT address for a given guest address
+    pub fn lookup(&self, addr: VirtAddr) -> Option<usize> {
+        // Make sure the address is aligned
+        assert!(addr.0 & 3 == 0, "Unaligned code address to JIT lookup");
+
+        let addr = self.blocks[addr.0 / 4];
+        if addr == 0 {
+            None
+        } else {
+            Some(addr)
         }
     }
 }
