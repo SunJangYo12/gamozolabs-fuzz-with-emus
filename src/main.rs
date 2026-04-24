@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit, File};
+use jitcache::JitCache;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
@@ -396,6 +397,10 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 fn main() {
+    // Create a JIT cache
+    let mut jit_cache =
+        Arc::new(Mutex::new(JitCache::new(VirtAddr(1024 * 1024))));
+
     let mut emu = Emulator::new(32 * 1024 * 1024); //32MB
 
     // Load the application into the emulator

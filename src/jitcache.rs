@@ -38,7 +38,7 @@ pub fn alloc_rwx(size: usize) -> &'static mut [u8] {
 }
 
 /// A cache which stores cached JIT blocks and tranlation tables to them
-struct JitCache {
+pub struct JitCache {
     /// A vector which contains the addresses of JIT code for the
     /// corresponding guest virtual address.
     ///
