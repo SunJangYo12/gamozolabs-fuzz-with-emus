@@ -1009,53 +1009,50 @@ impl Emulator {
                     let rs2 = self.reg(inst.rs2);
 
                     match inst.funct3 {
-                        0b000 => {
-                            // BEQ
-                            if rs1 == rs2 {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
+                        0b000 | 0b001 | 0b100 | 0b101 | 0b110 | 0b111 => {
+                            let cond = match inst.funct3 {
+                                0b000 => /* BEQ   */ "jne",
+                                0b001 => /* BNE   */ "je",
+                                0b100 => /* BLT   */ "jnlt",
+                                0b101 => /* BGE   */ "jnge",
+                                0b110 => /* BLTU  */ "jnb",
+                                0b111 => /* BGEU  */ "jnae",
+                                _ => unreachable!(),
+                            };
+
+                            let target =
+                                pc.wrapping_add(inst.imm as i64 as u64);
+
+                            if (target / 4) >= num_blocks as u64 {
+                                // Branch target is out of bounds
+                                return Err(VmExit::JitOob);
                             }
-                        }
-                        0b001 => {
-                            // BNE
-                            if rs1 != rs2 {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
-                            }
-                        }
-                        0b100 => {
-                            // BLT
-                            if (rs1 as i64) < (rs2 as i64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
-                            }
-                        }
-                        0b101 => {
-                            // BGE
-                            if (rs1 as i64) >= (rs2 as i64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
-                            }
-                        }
-                        0b110 => {
-                            // BLTU
-                            if (rs1 as u64) < (rs2 as u64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
-                            }
-                        }
-                        0b111 => {
-                            // BGEU
-                            if (rs1 as u64) >= (rs2 as u64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
-                            }
+
+                            asm += &format!(r#"
+                                mov rax, [r13 + {rs1}*8]
+                                mov rbx, [r13 + {rs2}*8]
+
+                                cmp rax, rbx
+                                {}  .fallthrough
+
+                                mov  rax, [r13 + {target}]
+                                test rax, rax
+                                jz   .jit_resolve
+
+                                jmp rax
+
+                                .jit_resolve:
+                                mov rax, 1
+                                mov rbx, {target_pc}
+                                ret
+
+                                .fallthrough:
+                            "#, cond = cond,
+                                rs1 = inst.rs1 as usize,
+                                rs2 = inst.rs2 as usize,
+                                target_pc = target,
+                                target = (target / 4) * 8);
+
                         }
                         _ => unimplemented!("Unexpected 0b1100011"),
                     }
