@@ -968,7 +968,39 @@ impl Emulator {
                                     inst.imm as i64 as u64);
                             self.set_reg(inst.rd, pc.wrapping_add(4));
                             self.set_reg(Register::Pc, target);
-                            continue 'next_inst;
+
+                            // Compute the return address
+                            let ret = pc.wrapping_add(4);
+
+                            asm += &format!(r#"
+                                mov  rax, {ret}
+                                mov  [r13 + {rd}*8], rax
+
+                                mov  rax, [r13 + {rs1}*8]
+                                add  rax, {imm}
+
+                                shr  rax, 2
+                                cmp  rax, {num_blocks}
+                                jae  .jit_resolve
+
+                                mov  rax, [r14 + rax*8]
+                                test rax, rax
+                                jz   .jit_resolve
+
+                                jmp rax
+
+                                .jit_resolve\:
+                                mov  rbx, [r13 + {rs1}*8]
+                                add  rbx, {imm}
+                                mov  rax, 1
+                                ret
+
+                            "#, rd = inst.rd as usize, rs1 = inst.rs1 as usize,
+                                imm = inst.imm,
+                                ret = ret,
+                                num_blocks = num_blocks);
+
+                            break 'next_inst;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
