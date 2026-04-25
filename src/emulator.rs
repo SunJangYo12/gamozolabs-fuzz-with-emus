@@ -905,10 +905,10 @@ impl Emulator {
             macro_rules! load_reg {
                 ($x86reg:expr, $reg:expr) => {
                     if $reg == Register::Zero {
-                        format!("xor {x86reg}, {x86reg}", x86reg = $x86reg)
+                        format!("xor {x86reg}, {x86reg}\n", x86reg = $x86reg)
                     } else {
-                        format!("mov {x86reg}, [r13 + {reg}*8]",
-                            x86reg = $x86reg, $reg as usize)
+                        format!("mov {x86reg}, [r13 + {reg}*8]\n",
+                            x86reg = $x86reg, reg = $reg as usize)
                     }
                 }
             }
@@ -919,7 +919,7 @@ impl Emulator {
                     if $reg == Register::Zero {
                         String::new()
                     } else {
-                        format!("mov [r13 + {reg}*8], {x86reg}",
+                        format!("mov [r13 + {reg}*8], {x86reg}\n",
                             x86reg = $x86reg, reg = $reg as usize)
                     }
                 }
@@ -937,10 +937,9 @@ impl Emulator {
                     let val = (inst.imm as i64 as u64).wrapping_add(pc);
                     asm += &format!(r#"
                         mov rax, {imm:#x}
-                        mov [r13 + {rd}*8], rax
-                    "#, rd = inst.rd as usize, imm = val);
-
-                    print!("JIT is now\n{}\n", asm);
+                        {store_rd_from_rax}
+                    "#, imm = inst.imm,
+                        store_rd_from_rax = store_reg!(inst.rd, "rax"));
                 }
                 0b1101111 => {
                     // JAL
@@ -959,7 +958,7 @@ impl Emulator {
 
                     asm += &format!(r#"
                         mov rax, {ret}
-                        mov [r13 + {rd}*8], rax
+                        {store_rd_from_rax}
 
                         mov  rax, [r14 + {target}]
                         test rax, rax
@@ -972,8 +971,9 @@ impl Emulator {
                         mov rbx, {target_pc}
                         ret
 
-                    "#, rd = inst.rd as usize, ret = ret,
+                    "#, ret = ret,
                         target_pc = target,
+                        store_rd_from_rax = store_reg!(inst.rd, "rax"),
                         target = (target / 4) * 8);
 
                     break 'next_inst;
@@ -990,9 +990,9 @@ impl Emulator {
 
                             asm += &format!(r#"
                                 mov  rax, {ret}
-                                mov  [r13 + {rd}*8], rax
+                                {store_rd_from_rax}
 
-                                mov  rax, [r13 + {rs1}*8]
+                                {load_rax_from_rs1}
                                 add  rax, {imm}
 
                                 shr  rax, 2
@@ -1006,14 +1006,16 @@ impl Emulator {
                                 jmp rax
 
                                 .jit_resolve:
-                                mov  rbx, [r13 + {rs1}*8]
+                                {load_rbx_from_rs1}
                                 add  rbx, {imm}
                                 mov  rax, 1
                                 ret
 
-                            "#, rd = inst.rd as usize, rs1 = inst.rs1 as usize,
-                                imm = inst.imm,
+                            "#, imm = inst.imm,
                                 ret = ret,
+                                store_rd_from_rax = store_reg!(inst.rd, "rax"),
+                                load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs1 = load_reg!("rbx", inst.rs1),
                                 num_blocks = num_blocks);
 
                             break 'next_inst;
