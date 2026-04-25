@@ -1049,8 +1049,8 @@ impl Emulator {
                             }
 
                             asm += &format!(r#"
-                                mov rax, [r13 + {rs1}*8]
-                                mov rbx, [r13 + {rs2}*8]
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
 
                                 cmp rax, rbx
                                 {cond}  .fallthrough
@@ -1068,8 +1068,8 @@ impl Emulator {
 
                                 .fallthrough:
                             "#, cond = cond,
-                                rs1 = inst.rs1 as usize,
-                                rs2 = inst.rs2 as usize,
+                                load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                                 target_pc = target,
                                 target = (target / 4) * 8);
 
@@ -1093,13 +1093,11 @@ impl Emulator {
                     };
 
                     asm += &format!(r#"
-                        mov rax, [r13 + {rs1}*8]
-                        add rax, {imm}
-
-                        {loadtyp} rax, {loadsz} [r8 + rax]
-                        mov [r13 + {rd}*8], rax
-                    "#, rd  = inst.rd as usize,
-                        rs1 = inst.rs1 as usize,
+                        {load_rax_from_rs1}
+                        {loadtyp} rax, {loadsz} [r8 + rax + {imm}]
+                        {store_rax_into_rd}
+                    "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                        store_rax_into_rd = store_reg!(inst.rd, "rax"),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
                         imm = inst.imm);
@@ -1145,11 +1143,11 @@ impl Emulator {
                     };
 
                     asm += &format!(r#"
-                        mov rax, [r13 + {rs1}*8]
-                        mov rbx, [r13 + {rs2}*8]
+                        {load_rax_from_rs1}
+                        {load_rbx_from_rs2}
                         {loadtyp} {loadsz} [r8 + rax + {imm}], rbx
-                    "#, rs1 = inst.rs1 as usize,
-                        rs2 = inst.rs2 as usize,
+                    "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                        load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
                         imm = inst.imm);
