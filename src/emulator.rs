@@ -1227,10 +1227,17 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SLLI
-                                    let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd, rs1 << shamt);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        shl rax, {imm}
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm)
                                 }
-                                _ => unimplemented!("Unexpected 0b0010011"),
+                                _ => unreachable!(),
                             }
                         }
                         0b101 => {
@@ -1239,14 +1246,27 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SRLI
-                                    let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd, rs1 >> shamt);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        shr rax, {imm}
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm)
                                 }
                                 0b010000 => {
                                     // SRAI
-                                    let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd,
-                                        ((rs1 as i64) >> shamt) as u64);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        sra rax, {imm}
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm)
                                 }
                                 _ => unreachable!(),
                             }
