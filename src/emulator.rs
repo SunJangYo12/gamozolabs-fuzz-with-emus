@@ -1033,7 +1033,7 @@ impl Emulator {
                                 mov rbx, [r13 + {rs2}*8]
 
                                 cmp rax, rbx
-                                {}  .fallthrough
+                                {cond}  .fallthrough
 
                                 mov  rax, [r13 + {target}]
                                 test rax, rax
@@ -1061,62 +1061,28 @@ impl Emulator {
                     // We knwo it's an ITtype
                     let inst = Itype::from(inst);
 
-                    // Compute the address
-                    let addr = VirtAddr(self.reg(inst.rs1)
-                        .wrapping_add(inst.imm as i64 as u64) as usize);
+                    let (loadtyp, loadsz) = match inst.funct3 {
+                        0b000 => /* LB  */ ("mov",   "byte"),
+                        0b001 => /* LH  */ ("mov",   "word"),
+                        0b010 => /* LW  */ ("mov",   "dword"),
+                        0b011 => /* LD  */ ("mov",   "qword"),
+                        0b100 => /* LBU */ ("movzx", "byte"),
+                        0b101 => /* LHU */ ("movzx", "word"),
+                        0b110 => /* LWU */ ("movzx", "dword"),
+                        _ => unreachable!(),
+                    };
 
-                    match inst.funct3 {
-                        0b000 => {
-                            // LB
-                            let mut tmp = [0u8; 1];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i8::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b001 => {
-                            // LH
-                            let mut tmp = [0u8; 2];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i16::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b010 => {
-                            // LW
-                            let mut tmp = [0u8; 4];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i32::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b011 => {
-                            // LD
-                            let mut tmp = [0u8; 8];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i64::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b100 => {
-                            // LBU
-                            let mut tmp = [0u8; 1];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u8::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b101 => {
-                            // LHU
-                            let mut tmp = [0u8; 2];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u16::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        0b110 => {
-                            // LWU
-                            let mut tmp = [0u8; 4];
-                            self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u32::from_le_bytes(tmp) as i64 as u64);
-                        }
-                        _ => unimplemented!("Unexpected 0b1100111"),
-                    }
+                    asm += &format!(r#"
+                        mov rax, [r13 + {rs1}*8]
+                        add rax, {imm}
+
+                        {loadtyp} rax, {loadsz} [r8 + rax]
+                        mov [r13 + {rd}*8], rax
+                    "#, rd  = inst.rd as usize,
+                        rs1 = inst.rs1 as usize,
+                        loadtyp = loadtyp,
+                        loadsz  = loadsz,
+                        imm = inst.imm);
                 }
                 0b0100011 => {
                     // We knwo it's an STtype
