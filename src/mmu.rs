@@ -171,8 +171,8 @@ impl Mmu {
         let block_end   = (addr.0 + buf.len()) / DIRTY_BLOCK_SIZE;
         for block in block_start..=block_end {
             // Determine the bitmap position of the dirty block
-            let idx = block_start / 64;
-            let bit = block_start % 64;
+            let idx = block / 64;
+            let bit = block % 64;
 
             // Check if the block is not dirty
             if self.dirty_bitmap[idx] & (1 << bit) == 0 {
