@@ -1156,41 +1156,70 @@ impl Emulator {
                     // We know it's an Itype
                     let inst = Itype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let imm = inst.imm as i64 as u64;
-
                     match inst.funct3 {
                         0b000 => {
                             // ADDI
-                            self.set_reg(inst.rd, rs1.wrapping_add(imm));
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                add rax, {imm}
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                imm = inst.imm);
                         }
                         0b010 => {
                             // SLTI
-                            if (rs1 as i64) < (imm as i64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                xor   ebx, ebx
+                                cmp   rax, {imm}
+                                setl  bl
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rbx_into_rd = store_reg!(inst.rd, "rbx"),
+                                imm = inst.imm);
                         }
                         0b011 => {
                             // SLTIU
-                            if (rs1 as u64) < (imm as u64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                xor   ebx, ebx
+                                cmp   rax, {imm}
+                                setb  bl
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rbx_into_rd = store_reg!(inst.rd, "rbx"),
+                                imm = inst.imm);
                         }
                         0b100 => {
                             // XORI
-                            self.set_reg(inst.rd, rs1 ^ imm);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                xor rax, {imm}
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                imm = inst.imm);
                         }
                         0b110 => {
                             // ORI
-                            self.set_reg(inst.rd, rs1 | imm);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                or rax, {imm}
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                imm = inst.imm);
                         }
                         0b111 => {
                             // ANDI
-                            self.set_reg(inst.rd, rs1 & imm);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                and rax, {imm}
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                imm = inst.imm);
                         }
                         0b001 => {
                             let mode = (inst.imm >> 6) & 0b111111;
