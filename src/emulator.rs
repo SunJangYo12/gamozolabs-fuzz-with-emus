@@ -964,11 +964,6 @@ impl Emulator {
                     match inst.funct3 {
                         0b000 => {
                             // JALR
-                            let target = self.reg(inst.rs1).wrapping_add(
-                                    inst.imm as i64 as u64);
-                            self.set_reg(inst.rd, pc.wrapping_add(4));
-                            self.set_reg(Register::Pc, target);
-
                             // Compute the return address
                             let ret = pc.wrapping_add(4);
 
@@ -989,7 +984,7 @@ impl Emulator {
 
                                 jmp rax
 
-                                .jit_resolve\:
+                                .jit_resolve:
                                 mov  rbx, [r13 + {rs1}*8]
                                 add  rbx, {imm}
                                 mov  rax, 1
