@@ -901,13 +901,34 @@ impl Emulator {
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
+            // Produce the assembly statement to load RISCV-V `reg` into `x86reg`
+            macro_rules! load_reg {
+                ($x86reg:expr, $reg:expr) => {
+                    if $reg == Register::Zero {
+                        format!("xor {x86reg}, {x86reg}", x86reg = $x86reg)
+                    } else {
+                        format!("mov {x86reg}, [r13 + {reg}*8]",
+                            x86reg = $x86reg, $reg as usize)
+                    }
+                }
+            }
+
+            // Produce the assembly statement to store RISCV-V `reg` into `x86reg`
+            macro_rules! store_reg {
+                ($reg:expr, $x86reg:expr) => {
+                    if $reg == Register::Zero {
+                        String::new()
+                    } else {
+                        format!("mov [r13 + {reg}*8], {x86reg}",
+                            x86reg = $x86reg, reg = $reg as usize)
+                    }
+                }
+            }
             match opcode {
                 0b0110111 => {
                     // LUI
                     let inst = Utype::from(inst);
-                    asm += &format!(r#"
-                        mov [r13 + {rd}*8], {imm:#x}
-                    "#, rd = inst.rd as usize, imm = inst.imm);
+                    asm += &store_reg!(inst.rd, inst.imm);
                 }
                 0b0010111 => {
                     // AUIPC
@@ -1005,9 +1026,6 @@ impl Emulator {
                     // We know it's an Btype
                     let inst = Btype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let rs2 = self.reg(inst.rs2);
-
                     match inst.funct3 {
                         0b000 | 0b001 | 0b100 | 0b101 | 0b110 | 0b111 => {
                             let cond = match inst.funct3 {
@@ -1087,7 +1105,7 @@ impl Emulator {
                 0b0100011 => {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
-
+/*
                     // Compute the address
                     let addr = VirtAddr(self.reg(inst.rs1)
                         .wrapping_add(inst.imm as i64 as u64) as usize);
@@ -1114,7 +1132,25 @@ impl Emulator {
                             self.memory.write(addr, val)?;
                         }
                         _ => unimplemented!("Unexpected 0b0100011"),
-                    }
+                    }*/
+
+                    let (loadtyp, loadsz) = match inst.funct3 {
+                        0b000 => /* SB  */ ("mov", "byte"),
+                        0b001 => /* SH  */ ("mov", "word"),
+                        0b010 => /* SW  */ ("mov", "dword"),
+                        0b011 => /* SD  */ ("mov", "qword"),
+                        _ => unreachable!(),
+                    };
+
+                    asm += &format!(r#"
+                        mov rax, [r13 + {rs1}*8]
+                        mov rbx, [r13 + {rs2}*8]
+                        {loadtyp} {loadsz} [r8 + rax + {imm}], rbx
+                    "#, rs1 = inst.rs1 as usize,
+                        rs2 = inst.rs2 as usize,
+                        loadtyp = loadtyp,
+                        loadsz  = loadsz,
+                        imm = inst.imm);
                 }
                 0b0010011 => {
                     // We know it's an Itype
