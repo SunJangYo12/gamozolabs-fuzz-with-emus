@@ -1142,13 +1142,13 @@ impl Emulator {
                     let inst = Itype::from(inst);
 
                     let (loadtyp, loadsz) = match inst.funct3 {
-                        0b000 => /* LB  */ ("mov",   "byte"),
-                        0b001 => /* LH  */ ("mov",   "word"),
-                        0b010 => /* LW  */ ("mov",   "dword"),
-                        0b011 => /* LD  */ ("mov",   "qword"),
-                        0b100 => /* LBU */ ("movzx", "byte"),
-                        0b101 => /* LHU */ ("movzx", "word"),
-                        0b110 => /* LWU */ ("movzx", "dword"),
+                        0b000 => /* LB  */ ("movsx",  "byte"),
+                        0b001 => /* LH  */ ("movsx",  "word"),
+                        0b010 => /* LW  */ ("movsx",  "dword"),
+                        0b011 => /* LD  */ ("movsx",  "qword"),
+                        0b100 => /* LBU */ ("movzx",  "byte"),
+                        0b101 => /* LHU */ ("movzx",  "word"),
+                        0b110 => /* LWU */ ("movzx",  "dword"),
                         _ => unreachable!(),
                     };
 
@@ -1166,22 +1166,23 @@ impl Emulator {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
 
-                    let (loadtyp, loadsz) = match inst.funct3 {
-                        0b000 => /* SB  */ ("mov", "byte"),
-                        0b001 => /* SH  */ ("mov", "word"),
-                        0b010 => /* SW  */ ("mov", "dword"),
-                        0b011 => /* SD  */ ("mov", "qword"),
+                    let (loadtyp, loadsz, regtype) = match inst.funct3 {
+                        0b000 => /* SB  */ ("mov", "byte", "bl"),
+                        0b001 => /* SH  */ ("mov", "word", "bx"),
+                        0b010 => /* SW  */ ("mov", "dword", "ebx"),
+                        0b011 => /* SD  */ ("mov", "qword", "rbx"),
                         _ => unreachable!(),
                     };
 
                     asm += &format!(r#"
                         {load_rax_from_rs1}
                         {load_rbx_from_rs2}
-                        {loadtyp} {loadsz} [r8 + rax + {imm}], rbx
+                        {loadtyp} {loadsz} [r8 + rax + {imm}], {regtype}
                     "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                         load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
+                        regtype = regtype,
                         imm = inst.imm);
                 }
                 0b0010011 => {
