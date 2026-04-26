@@ -1162,7 +1162,7 @@ impl Emulator {
                 0b0100011 => {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
-/*
+
                     // Compute the address
                     let addr = VirtAddr(self.reg(inst.rs1)
                         .wrapping_add(inst.imm as i64 as u64) as usize);
@@ -1189,7 +1189,7 @@ impl Emulator {
                             self.memory.write(addr, val)?;
                         }
                         _ => unimplemented!("Unexpected 0b0100011"),
-                    }*/
+                    }
 
                     let (loadtyp, loadsz) = match inst.funct3 {
                         0b000 => /* SB  */ ("mov", "byte"),
