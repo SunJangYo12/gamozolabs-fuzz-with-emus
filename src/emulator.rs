@@ -1148,25 +1148,26 @@ impl Emulator {
                     // We knwo it's an ITtype
                     let inst = Itype::from(inst);
 
-                    let (loadtyp, loadsz) = match inst.funct3 {
-                        0b000 => /* LB  */ ("movsx",  "byte"),
-                        0b001 => /* LH  */ ("movsx",  "word"),
-                        0b010 => /* LW  */ ("movsx",  "dword"),
-                        0b011 => /* LD  */ ("mov",    "qword"),
-                        0b100 => /* LBU */ ("movzx",  "byte"),
-                        0b101 => /* LHU */ ("movzx",  "word"),
-                        0b110 => /* LWU */ ("movzx",  "dword"),
+                    let (loadtyp, loadsz, regtyp) = match inst.funct3 {
+                        0b000 => /* LB  */ ("movsx",  "byte",  "rax"),
+                        0b001 => /* LH  */ ("movsx",  "word",  "rax"),
+                        0b010 => /* LW  */ ("movsx",  "dword", "rax"),
+                        0b011 => /* LD  */ ("mov",    "qword", "rax"),
+                        0b100 => /* LBU */ ("movzx",  "byte",  "rax"),
+                        0b101 => /* LHU */ ("movzx",  "word",  "rax"),
+                        0b110 => /* LWU */ ("mov",    "dword", "eax"),
                         _ => unreachable!(),
                     };
 
                     asm += &format!(r#"
                         {load_rax_from_rs1}
-                        {loadtyp} rax, {loadsz} [r8 + rax + {imm}]
+                        {loadtyp} {regtyp}, {loadsz} [r8 + rax + {imm}]
                         {store_rax_into_rd}
                     "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                         store_rax_into_rd = store_reg!(inst.rd, "rax"),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
+                        regtyp = regtyp,
                         imm = inst.imm);
                 }
                 0b0100011 => {
