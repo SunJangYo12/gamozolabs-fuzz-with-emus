@@ -945,7 +945,7 @@ impl Emulator {
     }
 
     // Generate the assembly string for `pc` during JIT
-    pub fn generate_jit(&mut self, pc: VirtAddr, num_blocks: usize)
+    pub fn generate_jit(&self, pc: VirtAddr, num_blocks: usize)
             -> Result<String, VmExit> {
         let mut asm = "[bits 64]\n".to_string();
 
@@ -955,10 +955,11 @@ impl Emulator {
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))?;
 
-            print!("Read inst {:#x}\n", inst);
-
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
+
+            // Add a label to this instruction
+            asm += &format!("inst_pc_{:#x}:\n", pc);
 
             // Produce the assembly statement to load RISCV-V `reg` into `x86reg`
             macro_rules! load_reg {
@@ -1164,34 +1165,6 @@ impl Emulator {
                 0b0100011 => {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
-
-                    // Compute the address
-                    let addr = VirtAddr(self.reg(inst.rs1)
-                        .wrapping_add(inst.imm as i64 as u64) as usize);
-
-                    match inst.funct3 {
-                        0b000 => {
-                            // SB
-                            let val = self.reg(inst.rs2) as u8;
-                            self.memory.write(addr, val)?;
-                        }
-                        0b001 => {
-                            // SH
-                            let val = self.reg(inst.rs2) as u16;
-                            self.memory.write(addr, val)?;
-                        }
-                        0b010 => {
-                            // SW
-                            let val = self.reg(inst.rs2) as u32;
-                            self.memory.write(addr, val)?;
-                        }
-                        0b011 => {
-                            // SD
-                            let val = self.reg(inst.rs2) as u64;
-                            self.memory.write(addr, val)?;
-                        }
-                        _ => unimplemented!("Unexpected 0b0100011"),
-                    }
 
                     let (loadtyp, loadsz) = match inst.funct3 {
                         0b000 => /* SB  */ ("mov", "byte"),
