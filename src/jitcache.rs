@@ -122,6 +122,7 @@ impl JitCache {
         // Number of remaining bytes in the JIT storage
         let jit_inuse = jit.1;
         let jit_remain = jit.0.len() - jit_inuse;
+        print!("{} {}\n", jit_remain, code.len());
         assert!(code.len() > jit_remain, "Out of space in JIT");
 
         // Copy the new code into the JIT
