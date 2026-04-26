@@ -886,7 +886,7 @@ impl Emulator {
                 std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
                 let res = Command::new("nasm").args(&[
-                    "-f", "bin", "-o", "-", asmfn.to_str().unwrap()
+                    "-f", "bin", "-o", "test", asmfn.to_str().unwrap()
                 ]).status().expect("Failed to run nasm, is it in yout path?");
 
                 assert!(res.success(), "nasm returned an error");
