@@ -885,6 +885,12 @@ impl Emulator {
                 let asmfn = std::env::temp_dir().join("tmp.asm");
                 std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
+                let res = Command::new("nasm").args(&[
+                    "-f", "bin", "-o", "-", asmfn.to_str().unwrap()
+                ]).status().expect("Failed to run nasm, is it in yout path?");
+
+                assert!(res.success(), "nasm returned an error");
+
                 print!("{}\n", asm);
                 panic!("WHOA");
             }
