@@ -932,8 +932,6 @@ impl Emulator {
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, reentry_pc);
 
-                print!("JIT exited with {} {:#x}\n", exit_code, reentry_pc);
-
                 match exit_code {
                     1 => {
                         // Branch decode request, just continue as PC has been

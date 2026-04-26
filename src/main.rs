@@ -13,7 +13,7 @@ use jitcache::JitCache;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = false;
+const VERBOSE_GUEST_PRINTS: bool = true;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -22,8 +22,6 @@ fn rdtsc() -> u64 {
 fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
-
-    print!("Syscall {}\n", num);
 
     // All manual using eg. man 2 open, etc
     match num {
@@ -378,7 +376,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if _vmexit != VmExit::Exit {
+            if true || _vmexit != VmExit::Exit {
                 panic!("Vmexit {:#x} {:#x?}\n",
                     emu.reg(Register::Pc), _vmexit);
             }
