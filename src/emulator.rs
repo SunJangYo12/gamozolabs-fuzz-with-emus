@@ -883,6 +883,7 @@ impl Emulator {
             let jit_addr = if let Some(jit_addr) = jit_addr {
                 jit_addr
             } else {
+                print!("Lifting {:#x}\n", pc);
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
