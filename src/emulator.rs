@@ -1093,7 +1093,7 @@ impl Emulator {
                             let cond = match inst.funct3 {
                                 0b000 => /* BEQ   */ "jne",
                                 0b001 => /* BNE   */ "je",
-                                0b100 => /* BLT   */ "jnlt",
+                                0b100 => /* BLT   */ "jnl",
                                 0b101 => /* BGE   */ "jnge",
                                 0b110 => /* BLTU  */ "jnb",
                                 0b111 => /* BGEU  */ "jnae",
