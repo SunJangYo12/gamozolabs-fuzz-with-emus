@@ -1299,7 +1299,7 @@ impl Emulator {
                             asm += &format!(r#"
                                 {load_rax_from_rs1}
                                 {load_rbx_from_rs2}
-                                sub rax, ebx
+                                sub rax, rbx
                                 {store_rax_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
