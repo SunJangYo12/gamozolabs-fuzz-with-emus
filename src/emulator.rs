@@ -1296,7 +1296,7 @@ impl Emulator {
                                     let shamt = inst.imm & 0b111111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
-                                        sra rax, {imm}
+                                        sar rax, {imm}
                                         {store_rax_into_rd}
                                     "#, load_rax_from_rs1 =
                                             load_reg!("rax", inst.rs1),
