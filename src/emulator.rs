@@ -1,6 +1,7 @@
 //! A 64-bit RISC-V RV64i interpreter
 
 use std::fmt;
+use std::process::Command;
 use std::sync::Arc;
 use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC};
 use crate::jitcache::JitCache;
@@ -880,6 +881,9 @@ impl Emulator {
 
                 let asm = 
                     self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
+
+                let asmfn = std::env::temp_dir().join("tmp.asm");
+                std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
                 print!("{}\n", asm);
                 panic!("WHOA");
