@@ -1495,9 +1495,17 @@ impl Emulator {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
+                        asm += r#"
+                            mov rax, 2
+                            ret
+                        "#;
                         return Err(VmExit::Syscall);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
+                        asm += r#"
+                            mov rax, 3
+                            ret
+                        "#;
                         panic!("EBREAK");
                     } else {
                         unreachable!()
@@ -1513,8 +1521,14 @@ impl Emulator {
                     match inst.funct3 {
                         0b000 => {
                             // ADDIW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_add(imm) as i32 as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                add eax, {imm}
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                imm = inst.imm);
                         }
                         0b001 => {
                             let mode = (inst.imm >> 5) & 0b1111111;
@@ -1522,9 +1536,17 @@ impl Emulator {
                             match mode {
                                 0b0000000 => {
                                     // SLLIW
-                                    let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        (rs1 << shamt) as i32 as i64 as u64);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        shl eax, {imm}
+                                        movsx rax, eax
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm
+                                    );
                                 }
                                 _ => unreachable!(),
                             }
@@ -1535,15 +1557,31 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SRLIW
-                                    let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        (rs1 >> shamt) as i32 as i64 as u64);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        shr eax, {imm}
+                                        movsx rax, eax
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm
+                                    );
                                 }
                                 0b010000 => {
                                     // SRAIW
-                                    let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        ((rs1 as i32) >> shamt) as i64 as u64);
+                                    asm += &format!(r#"
+                                        {load_rax_from_rs1}
+                                        sar eax, {imm}
+                                        movsx rax, eax
+                                        {store_rax_into_rd}
+                                    "#, load_rax_from_rs1 =
+                                            load_reg!("rax", inst.rs1),
+                                        store_rax_into_rd =
+                                            store_reg!(inst.rd, "rax"),
+                                        imm = inst.imm
+                                    );
                                 }
                                 _ => unreachable!(),
                             }

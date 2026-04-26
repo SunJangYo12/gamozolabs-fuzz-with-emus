@@ -68,6 +68,8 @@ pub struct JitCache {
 //
 // JIT return code (in rax)
 // 1 - branch resolution issue, rbx = PC that was not present
+// 2 - ECALL instruction
+// 3 - EBREAK instruction
 
 impl JitCache {
     /// Allocates a new `JitCache` which is capable of handling up to
