@@ -3,3 +3,12 @@ sudo apt install binutils-riscv64-linux-gnu
 ricv...objdump -d test_app
 
 ndisasm -b 64 test
+
+# git
+```
+ 2045  git branch junk1
+ 2048  git checkout 0e58c52854a85317f3a6c06510d50422424736c1
+ 2050  git checkout master
+ 2053  git reset --hard 0e58c52854a85317f3a6c06510d50422424736c1
+
+```
