@@ -1416,31 +1416,68 @@ impl Emulator {
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADDW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_add(rs2) as i32 as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                add eax, ebx
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0100000, 0b000) => {
                             // SUBW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_sub(rs2) as i32 as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                sub eax, ebx
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b001) => {
                             // SLLW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                (rs1 << shamt) as i32 as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                shl eax, cl
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b101) => {
                             // SRLW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                (rs1 >> shamt) as i32 as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                shl eax, cl
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0100000, 0b101) => {
                             // SRAW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                ((rs1 as i32) >> shamt) as i64 as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                sar eax, cl
+                                movsx rax, eax
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         _ => unreachable!(),
                     }
