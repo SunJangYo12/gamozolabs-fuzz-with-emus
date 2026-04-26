@@ -967,7 +967,7 @@ impl Emulator {
                     if $reg == Register::Zero {
                         format!("xor {x86reg}, {x86reg}\n", x86reg = $x86reg)
                     } else {
-                        format!("mov {x86reg}, [r13 + {reg}*8]\n",
+                        format!("mov {x86reg}, qword [r13 + {reg}*8]\n",
                             x86reg = $x86reg, reg = $reg as usize)
                     }
                 }
@@ -979,7 +979,7 @@ impl Emulator {
                     if $reg == Register::Zero {
                         String::new()
                     } else {
-                        format!("mov [r13 + {reg}*8], {x86reg}\n",
+                        format!("mov qword [r13 + {reg}*8], {x86reg}\n",
                             x86reg = $x86reg, reg = $reg as usize)
                     }
                 }
@@ -1532,7 +1532,6 @@ impl Emulator {
                             mov rax, 2
                             ret
                         "#;
-                        return Err(VmExit::Syscall);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
                         asm += r#"
