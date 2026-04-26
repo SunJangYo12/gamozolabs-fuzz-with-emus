@@ -878,7 +878,10 @@ impl Emulator {
                 // assembly string which we will assembly using `nasm` on the
                 // command line
 
-                self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
+                let asm = 
+                    self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
+
+                print!("{}\n", asm);
                 panic!("WHOA");
             }
             // Execute the JIT
@@ -892,9 +895,9 @@ impl Emulator {
             -> Result<String, VmExit> {
         let mut asm = String::new();
 
+        let mut pc = pc.0 as u64;
         'next_inst: loop {
             // Get the current program counter
-            let pc = self.reg(Register::Pc);
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))?;
 
@@ -938,7 +941,7 @@ impl Emulator {
                     asm += &format!(r#"
                         mov rax, {imm:#x}
                         {store_rd_from_rax}
-                    "#, imm = inst.imm,
+                    "#, imm = val,
                         store_rd_from_rax = store_reg!(inst.rd, "rax"));
                 }
                 0b1101111 => {
@@ -1410,9 +1413,6 @@ impl Emulator {
                     // We know it's an Rtype
                     let inst = Rtype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1) as u32;
-                    let rs2 = self.reg(inst.rs2) as u32;
-
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADDW
@@ -1515,9 +1515,6 @@ impl Emulator {
                     // We know it's an Itype
                     let inst = Itype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1) as u32;
-                    let imm = inst.imm as u32;
-
                     match inst.funct3 {
                         0b000 => {
                             // ADDIW
@@ -1592,9 +1589,9 @@ impl Emulator {
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
-            // Update PC to the next intruction
-            self.set_reg(Register::Pc, pc.wrapping_add(4));
+            pc += 4;
         }
+
         Ok(asm)
     }
 }
