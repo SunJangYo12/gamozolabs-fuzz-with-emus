@@ -141,6 +141,18 @@ impl Mmu {
         Some(())
     }
 
+    /// Get the tuple of (memory ptr, permissions pointer, dirty pointer
+    /// dirty_bitmap pointer)
+    #[inline]
+    pub fn jit_addrs(&self) -> (usize, usize, usize, usize) {
+        (
+            self.memory.as_ptr() as usize,
+            self.permissions.as_ptr() as usize,
+            self.dirty.as_ptr() as usize,
+            self.dirty_bitmap.as_ptr() as usize,
+        )
+    }
+
     /// write the bytes from `buf` into `addr`
     pub fn write_from(&mut self, addr: VirtAddr, buf: &[u8])
             -> Result<(), VmExit> {

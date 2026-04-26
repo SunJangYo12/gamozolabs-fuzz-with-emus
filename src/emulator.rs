@@ -863,6 +863,12 @@ impl Emulator {
 
     /// Run the VM using the JIT
     pub fn run_jit(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+        // Get the JIT address
+        let (memory, perms, dirty, dirty_bitmap) = self.memory.jit_addrs();
+
+        // Get the translation table
+        let trans_table = self.jit_cache.as_ref().unwrap().translation_table();
+
         loop {
             // Get the current PC
             let pc  = self.reg(Register::Pc);
@@ -901,6 +907,30 @@ impl Emulator {
                 self.jit_cache.as_ref().unwrap().add_mapping(
                     VirtAddr(pc as usize), &tmp)
             };
+
+            unsafe {
+                // Invoke the jit
+                let exit_code: u64;
+                let status:    u64;
+
+                asm!(r#"
+                    call {entry}
+                "#,
+                entry = in(reg) jit_addr,
+                out("rax") exit_code,
+                out("rbx") status,
+                out("rcx") _,
+                in("r8")   memory,
+                in("r9")   perms,
+                in("r10")  dirty,
+                in("r11")  dirty_bitmap,
+                in("r12")  0u64,
+                in("r13")  self.registers.as_ptr(),
+                in("r14")  trans_table,
+                );
+
+                print!("JIT exited with {} {:#x}\n", exit_code, status);
+            }
         }
 
         Ok(())

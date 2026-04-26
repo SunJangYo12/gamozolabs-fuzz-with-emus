@@ -58,6 +58,9 @@ pub struct JitCache {
 }
 
 // JIT calling convention
+// rax - Scratch
+// rbx - Scratch
+// rcx - Scratch
 // r8  - Pointer to the base of mmu.memory
 // r9  - Pointer to the base of mmu.permissions
 // r10 - Pointer to the base of mmu.dirty
@@ -82,6 +85,11 @@ impl JitCache {
             }).collect::<Vec<_>>().into_boxed_slice(),
             jit: Mutex::new((alloc_rwx(16 * 1024 * 1024), 0)),
         }
+    }
+
+    /// Get the address of the JIT block translation table
+    pub fn translation_table(&self) -> usize {
+        self.blocks.as_ptr() as usize
     }
 
     /// Return the maximum number of blocks this `JitCache` can translate
@@ -137,9 +145,6 @@ impl JitCache {
         jit.1 += code.len();
 
         print!("Added jit for {:#x} -> {:#x}\n", addr.0, new_addr);
-        unsafe {
-            asm!("int3");
-        }
 
         // Return the newly allocated JIT
         new_addr
