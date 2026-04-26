@@ -122,7 +122,6 @@ impl JitCache {
         // Number of remaining bytes in the JIT storage
         let jit_inuse = jit.1;
         let jit_remain = jit.0.len() - jit_inuse;
-        print!("{} {}\n", jit_remain, code.len());
         assert!(jit_remain > code.len(), "Out of space in JIT");
 
         // Copy the new code into the JIT
@@ -136,6 +135,8 @@ impl JitCache {
 
         // Update the in use for the JIT
         jit.1 += code.len();
+
+        print!("Added jit for {:#x} -> {:#x}\n", addr.0, new_addr);
 
         // Return the newly allocated JIT
         new_addr
