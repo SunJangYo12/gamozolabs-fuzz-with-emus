@@ -1174,7 +1174,7 @@ impl Emulator {
                                 xor   ebx, ebx
                                 cmp   rax, {imm}
                                 setl  bl
-                                {store_rax_into_rd}
+                                {store_rbx_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 store_rbx_into_rd = store_reg!(inst.rd, "rbx"),
                                 imm = inst.imm);
@@ -1186,7 +1186,7 @@ impl Emulator {
                                 xor   ebx, ebx
                                 cmp   rax, {imm}
                                 setb  bl
-                                {store_rax_into_rd}
+                                {store_rbx_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 store_rbx_into_rd = store_reg!(inst.rd, "rbx"),
                                 imm = inst.imm);
@@ -1278,61 +1278,130 @@ impl Emulator {
                     // We know it's an Rtype
                     let inst = Rtype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let rs2 = self.reg(inst.rs2);
-
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADD
-                            self.set_reg(inst.rd, rs1.wrapping_add(rs2));
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                add rax, ebx
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0100000, 0b000) => {
                             // SUB
-                            self.set_reg(inst.rd, rs1.wrapping_sub(rs2));
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                sub rax, ebx
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b001) => {
                             // SLL
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd, rs1 << shamt);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                shl rax, cl
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b010) => {
                             // SLT
-                            if (rs1 as i64) < (rs2 as i64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                xor ecx, ecx
+                                cmp rax, rbx
+                                setl cl
+                                {store_rcx_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rcx_into_rd = store_reg!(inst.rd, "rcx"),
+                                );
                         }
                         (0b0000000, 0b011) => {
                             // SLTU
-                            if (rs1 as u64) < (rs2 as u64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                xor ecx, ecx
+                                cmp rax, rbx
+                                setb cl
+                                {store_rcx_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rcx_into_rd = store_reg!(inst.rd, "rcx"),
+                                );
                         }
                         (0b0000000, 0b100) => {
                             // XOR
-                            self.set_reg(inst.rd, rs1 ^ rs2);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                xor rax, ebx
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b101) => {
                             // SRL
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd, rs1 >> shamt);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                shr rax, cl
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0100000, 0b101) => {
                             // SRA
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd,
-                                ((rs1 as i64) >> shamt) as u64);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rcx_from_rs2}
+                                sar rax, cl
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rcx_from_rs2 = load_reg!("rcx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b110) => {
                             // OR
-                            self.set_reg(inst.rd, rs1 | rs2);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                or rax, ebx
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         (0b0000000, 0b111) => {
                             // AND
-                            self.set_reg(inst.rd, rs1 & rs2);
+                            asm += &format!(r#"
+                                {load_rax_from_rs1}
+                                {load_rbx_from_rs2}
+                                and rax, ebx
+                                {store_rax_into_rd}
+                            "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
+                                load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
+                                store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                                );
                         }
                         _ => unreachable!(),
                     }
