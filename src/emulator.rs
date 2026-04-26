@@ -874,27 +874,33 @@ impl Emulator {
                 )
             };
 
-            if jit_addr.is_none() {
+            let jit_addr = if let Some(jit_addr) = jit_addr {
+                jit_addr
+            } else {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
-
                 let asm = 
                     self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
 
+                // Write out the assembly
                 let asmfn = std::env::temp_dir().join("tmp.asm");
                 std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
+                // Invoke NASM to generate the binary
                 let res = Command::new("nasm").args(&[
                     "-f", "bin", "-o", "test", asmfn.to_str().unwrap()
                 ]).status().expect("Failed to run nasm, is it in yout path?");
-
                 assert!(res.success(), "nasm returned an error");
 
-                print!("{}\n", asm);
-                panic!("WHOA");
-            }
-            // Execute the JIT
+                // Read the binary
+                let tmp = std::fs::read("test")
+                    .expect("Failed to read nasm output");
+
+                // Update the JIT tables
+                self.jit_cache.as_ref().unwrap().add_mapping(
+                    VirtAddr(pc as usize), &tmp)
+            };
         }
 
         Ok(())
