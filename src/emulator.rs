@@ -1145,7 +1145,7 @@ impl Emulator {
                         0b000 => /* LB  */ ("movsx",   "byte"),
                         0b001 => /* LH  */ ("movsx",   "word"),
                         0b010 => /* LW  */ ("movsx",   "dword"),
-                        0b011 => /* LD  */ ("movsx",   "qword"),
+                        0b011 => /* LD  */ ("mov",   "qword"),
                         0b100 => /* LBU */ ("movzx", "byte"),
                         0b101 => /* LHU */ ("movzx", "word"),
                         0b110 => /* LWU */ ("movzx", "dword"),
