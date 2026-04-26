@@ -1317,7 +1317,7 @@ impl Emulator {
                             asm += &format!(r#"
                                 {load_rax_from_rs1}
                                 {load_rbx_from_rs2}
-                                add rax, ebx
+                                add rax, rbx
                                 {store_rax_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
@@ -1381,7 +1381,7 @@ impl Emulator {
                             asm += &format!(r#"
                                 {load_rax_from_rs1}
                                 {load_rbx_from_rs2}
-                                xor rax, ebx
+                                xor rax, rbx
                                 {store_rax_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
@@ -1417,7 +1417,7 @@ impl Emulator {
                             asm += &format!(r#"
                                 {load_rax_from_rs1}
                                 {load_rbx_from_rs2}
-                                or rax, ebx
+                                or rax, rbx
                                 {store_rax_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
@@ -1429,7 +1429,7 @@ impl Emulator {
                             asm += &format!(r#"
                                 {load_rax_from_rs1}
                                 {load_rbx_from_rs2}
-                                and rax, ebx
+                                and rax, rbx
                                 {store_rax_into_rd}
                             "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
