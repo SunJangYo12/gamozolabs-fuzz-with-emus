@@ -903,7 +903,7 @@ impl Emulator {
     // Generate the assembly string for `pc` during JIT
     pub fn generate_jit(&mut self, pc: VirtAddr, num_blocks: usize)
             -> Result<String, VmExit> {
-        let mut asm = String::new();
+        let mut asm = "[bits 64]\n".to_string();
 
         let mut pc = pc.0 as u64;
         'next_inst: loop {
