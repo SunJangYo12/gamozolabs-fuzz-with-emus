@@ -956,6 +956,8 @@ impl Emulator {
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))?;
 
+            print!("Read inst {:#x}\n", inst);
+
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
