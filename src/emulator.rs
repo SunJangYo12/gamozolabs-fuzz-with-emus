@@ -930,6 +930,14 @@ impl Emulator {
                 );
 
                 print!("JIT exited with {} {:#x}\n", exit_code, status);
+
+                match exit_code {
+                    1 => {
+                        // Branch decode request, update PC and re-enter
+                        self.set_reg(Register::Pc, status);
+                    }
+                    _ => unreachable!(),
+                }
             }
         }
 
