@@ -123,7 +123,7 @@ impl JitCache {
         let jit_inuse = jit.1;
         let jit_remain = jit.0.len() - jit_inuse;
         print!("{} {}\n", jit_remain, code.len());
-        assert!(code.len() > jit_remain, "Out of space in JIT");
+        assert!(jit_remain > code.len(), "Out of space in JIT");
 
         // Copy the new code into the JIT
         jit.0[jit_inuse..jit_inuse + code.len()].copy_from_slice(code);
