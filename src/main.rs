@@ -1,3 +1,5 @@
+#![feature(asm)]
+
 pub mod primitive;
 pub mod mmu;
 pub mod emulator;

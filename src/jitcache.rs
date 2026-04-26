@@ -137,6 +137,9 @@ impl JitCache {
         jit.1 += code.len();
 
         print!("Added jit for {:#x} -> {:#x}\n", addr.0, new_addr);
+        unsafe {
+            asm!("int3");
+        }
 
         // Return the newly allocated JIT
         new_addr
