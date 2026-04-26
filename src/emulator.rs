@@ -910,15 +910,15 @@ impl Emulator {
 
             unsafe {
                 // Invoke the jit
-                let exit_code: u64;
-                let status:    u64;
+                let exit_code : u64;
+                let reentry_pc: u64;
 
                 asm!(r#"
                     call {entry}
                 "#,
                 entry = in(reg) jit_addr,
                 out("rax") exit_code,
-                out("rbx") status,
+                out("rbx") reentry_pc,
                 out("rcx") _,
                 in("r8")   memory,
                 in("r9")   perms,
@@ -929,12 +929,19 @@ impl Emulator {
                 in("r14")  trans_table,
                 );
 
-                print!("JIT exited with {} {:#x}\n", exit_code, status);
+                // Update the PC reentry point
+                self.set_reg(Register::Pc, reentry_pc);
+
+                print!("JIT exited with {} {:#x}\n", exit_code, reentry_pc);
 
                 match exit_code {
                     1 => {
-                        // Branch decode request, update PC and re-enter
-                        self.set_reg(Register::Pc, status);
+                        // Branch decode request, just continue as PC has been
+                        // updated to the new target
+                    }
+                    2 => {
+                        // Syscall
+                        return Err(VmExit::Syscall);
                     }
                     _ => unreachable!(),
                 }
@@ -1527,17 +1534,18 @@ impl Emulator {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
-                        asm += r#"
+                        asm += &format!(r#"
                             mov rax, 2
+                            mov rbx, {pc}
                             ret
-                        "#;
+                        "#, pc = pc);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
-                        asm += r#"
-                            mov rax, 3
+                        asm += &format!(r#"
+                            mov rax, 2
+                            mov rbx, {pc}
                             ret
-                        "#;
-                        panic!("EBREAK");
+                        "#, pc = pc);
                     } else {
                         unreachable!()
                     }
