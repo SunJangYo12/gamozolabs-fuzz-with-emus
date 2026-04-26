@@ -1260,6 +1260,7 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SLLI
+                                    let shamt = inst.imm & 0b111111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         shl rax, {imm}
@@ -1268,7 +1269,7 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm)
+                                        imm = shamt)
                                 }
                                 _ => unreachable!(),
                             }
@@ -1279,6 +1280,7 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SRLI
+                                    let shamt = inst.imm & 0b111111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         shr rax, {imm}
@@ -1287,10 +1289,11 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm)
+                                        imm = shamt)
                                 }
                                 0b010000 => {
                                     // SRAI
+                                    let shamt = inst.imm & 0b111111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         sra rax, {imm}
@@ -1299,7 +1302,7 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm)
+                                        imm = shamt)
                                 }
                                 _ => unreachable!(),
                             }
@@ -1563,6 +1566,7 @@ impl Emulator {
                             match mode {
                                 0b0000000 => {
                                     // SLLIW
+                                    let shamt = inst.imm & 0b11111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         shl eax, {imm}
@@ -1572,7 +1576,7 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm
+                                        imm = shamt
                                     );
                                 }
                                 _ => unreachable!(),
@@ -1584,6 +1588,7 @@ impl Emulator {
                             match mode {
                                 0b000000 => {
                                     // SRLIW
+                                    let shamt = inst.imm & 0b11111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         shr eax, {imm}
@@ -1593,11 +1598,12 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm
+                                        imm = shamt
                                     );
                                 }
                                 0b010000 => {
                                     // SRAIW
+                                    let shamt = inst.imm & 0b11111;
                                     asm += &format!(r#"
                                         {load_rax_from_rs1}
                                         sar eax, {imm}
@@ -1607,7 +1613,7 @@ impl Emulator {
                                             load_reg!("rax", inst.rs1),
                                         store_rax_into_rd =
                                             store_reg!(inst.rd, "rax"),
-                                        imm = inst.imm
+                                        imm = shamt
                                     );
                                 }
                                 _ => unreachable!(),
