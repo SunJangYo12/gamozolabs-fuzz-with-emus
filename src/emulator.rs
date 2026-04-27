@@ -918,6 +918,7 @@ impl Emulator {
                 // Invoke the jit
                 let exit_code : u64;
                 let reentry_pc: u64;
+                let exit_info:  u64;
 
                 let dirty_inuse = self.memory.dirty_len();
                 let new_dirty_inuse: usize;
@@ -929,7 +930,7 @@ impl Emulator {
                 entry = in(reg) jit_addr,
                 out("rax")    exit_code,
                 out("rbx")    reentry_pc,
-                out("rcx")    _,
+                out("rcx")    exit_info,
                 in("r8")      memory,
                 in("r9")      perms,
                 in("r10")     dirty,
@@ -957,6 +958,14 @@ impl Emulator {
                     2 => {
                         // Syscall
                         return Err(VmExit::Syscall);
+                    }
+                    4 => {
+                        return Err(
+                            VmExit::ReadFault(VirtAddr(exit_info as usize)));
+                    }
+                    5 => {
+                        return Err(
+                            VmExit::WriteFault(VirtAddr(exit_info as usize)));
                     }
                     _ => unreachable!(),
                 }
