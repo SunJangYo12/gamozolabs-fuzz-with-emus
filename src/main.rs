@@ -488,7 +488,6 @@ fn main() {
             _ => break,
         }
     }
-    panic!("DONE");
 
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
