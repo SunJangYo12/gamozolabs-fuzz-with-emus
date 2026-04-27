@@ -471,10 +471,10 @@ fn main() {
         let vmexit = emu.run(&mut tmp)
             .expect_err("Failed to execute emulator");
 
-        print!("{:?}\n", vmexit);
-
         match vmexit {
             VmExit::Syscall => {
+                print!("Syscall {}\n", emu.reg(Register::A7));
+
                 if let Err(vmexit) = handle_syscall(&mut emu) {
                     break;
                 }
@@ -486,6 +486,7 @@ fn main() {
             _ => break,
         }
     }
+    panic!("DONE");
 
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
