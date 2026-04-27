@@ -1034,9 +1034,6 @@ impl Emulator {
                         return Err(VmExit::JitOob);
                     }
 
-                    // Update instruction count stats
-                    asm += &format!("add r15, {}\n", block_instrs);
-
                     asm += &format!(r#"
                         mov rax, {ret}
                         {store_rd_from_rax}
@@ -1045,16 +1042,19 @@ impl Emulator {
                         test rax, rax
                         jz   .jit_resolve
 
+                        add r15, {block_instrs}
                         jmp rax
 
                         .jit_resolve:
                         mov rax, 1
                         mov rbx, {target_pc}
+                        add r15, {block_instrs}
                         ret
 
                     "#, ret = ret,
                         target_pc = target,
                         store_rd_from_rax = store_reg!(inst.rd, "rax"),
+                        block_instrs = block_instrs,
                         target = (target / 4) * 8);
 
                     break 'next_inst;
@@ -1068,9 +1068,6 @@ impl Emulator {
                             // JALR
                             // Compute the return address
                             let ret = pc.wrapping_add(4);
-
-                            // Update instruction count stats
-                            asm += &format!("add r15, {}\n", block_instrs);
 
                             asm += &format!(r#"
                                 mov  rax, {ret}
@@ -1093,6 +1090,7 @@ impl Emulator {
                                 {load_rbx_from_rs1}
                                 add  rbx, {imm}
                                 mov  rax, 1
+                                add  r15, {block_instrs}
                                 ret
 
                             "#, imm = inst.imm,
@@ -1100,6 +1098,7 @@ impl Emulator {
                                 store_rd_from_rax = store_reg!(inst.rd, "rax"),
                                 load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs1 = load_reg!("rbx", inst.rs1),
+                                block_instrs = block_instrs,
                                 num_blocks = num_blocks);
 
                             break 'next_inst;
@@ -1143,11 +1142,13 @@ impl Emulator {
                                 test rax, rax
                                 jz   .jit_resolve
 
+                                add r15, {block_instrs}
                                 jmp rax
 
                                 .jit_resolve:
                                 mov rax, 1
                                 mov rbx, {target_pc}
+                                add r15, {block_instrs}
                                 ret
 
                                 .fallthrough:
@@ -1155,6 +1156,7 @@ impl Emulator {
                                 load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                                 load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                                 target_pc = target,
+                                block_instrs = block_instrs,
                                 target = (target / 4) * 8);
 
                         }
@@ -1575,15 +1577,17 @@ impl Emulator {
                         asm += &format!(r#"
                             mov rax, 2
                             mov rbx, {pc}
+                            add r15, {block_instrs}
                             ret
-                        "#, pc = pc);
+                        "#, pc = pc, block_instrs = block_instrs);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
                         asm += &format!(r#"
-                            mov rax, 2
+                            mov rax, 3
                             mov rbx, {pc}
+                            add r15, {block_instrs}
                             ret
-                        "#, pc = pc);
+                        "#, pc = pc, block_instrs = block_instrs);
                     } else {
                         unreachable!()
                     }
