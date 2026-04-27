@@ -151,6 +151,12 @@ impl Mmu {
         Some(())
     }
 
+    /// Get the maximum size of guest memory
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.memory.len()
+    }
+
     // Get the dirty list length
     #[inline]
     pub fn dirty_len(&self) -> usize {

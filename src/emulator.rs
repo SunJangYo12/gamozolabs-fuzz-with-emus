@@ -3,7 +3,8 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
-use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC, DIRTY_BLOCK_SIZE};
+use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_RAW, PERM_EXEC};
+use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 
 /// 64-bit RISC-V registers
@@ -1172,26 +1173,56 @@ impl Emulator {
                     // We knwo it's an ITtype
                     let inst = Itype::from(inst);
 
-                    let (loadtyp, loadsz, regtyp) = match inst.funct3 {
-                        0b000 => /* LB  */ ("movsx",  "byte",  "rax"),
-                        0b001 => /* LH  */ ("movsx",  "word",  "rax"),
-                        0b010 => /* LW  */ ("movsx",  "dword", "rax"),
-                        0b011 => /* LD  */ ("mov",    "qword", "rax"),
-                        0b100 => /* LBU */ ("movzx",  "byte",  "rax"),
-                        0b101 => /* LHU */ ("movzx",  "word",  "rax"),
-                        0b110 => /* LWU */ ("mov",    "dword", "eax"),
+                    let (loadtyp, loadsz, regtyp, access_size) = match inst.funct3 {
+                        0b000 => /* LB  */ ("movsx",  "byte",  "rbx", 1),
+                        0b001 => /* LH  */ ("movsx",  "word",  "rbx", 2),
+                        0b010 => /* LW  */ ("movsx",  "dword", "rbx", 4),
+                        0b011 => /* LD  */ ("mov",    "qword", "rbx", 8),
+                        0b100 => /* LBU */ ("movzx",  "byte",  "rbx", 1),
+                        0b101 => /* LHU */ ("movzx",  "word",  "rbx", 2),
+                        0b110 => /* LWU */ ("mov",    "dword", "ebx", 4),
                         _ => unreachable!(),
                     };
 
+                    // Compute the read permissions mask
+                    let mut perm_mask = 0;
+                    for ii in 0..access_size {
+                        perm_mask |= PERM_READ << (ii * 8)
+                    }
+
                     asm += &format!(r#"
                         {load_rax_from_rs1}
-                        {loadtyp} {regtyp}, {loadsz} [r8 + rax + {imm}]
-                        {store_rax_into_rd}
+                        add rax, {imm}
+
+                        cmp rax, {memory_len} - {access_size}
+                        ja  .fault
+
+                        {loadtyp} {regtyp}, {loadsz} [r9 + rax]
+                        mov rcx, {perm_mask}
+                        and rbx, rcx
+                        cmp rbx, rcx
+                        je  .nofault
+
+                        .fault:
+                        mov rcx, rax
+                        mov rbx, {pc}
+                        mov rax, 4
+                        add r15, {block_instrs}
+                        ret
+
+                        .nofault:
+                        {loadtyp} {regtyp}, {loadsz} [r8 + rax]
+                        {store_rbx_into_rd}
                     "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
-                        store_rax_into_rd = store_reg!(inst.rd, "rax"),
+                        store_rbx_into_rd = store_reg!(inst.rd, "rbx"),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
                         regtyp = regtyp,
+                        pc = pc,
+                        access_size = access_size,
+                        block_instrs = block_instrs,
+                        perm_mask = perm_mask,
+                        memory_len = self.memory.len(),
                         imm = inst.imm);
                 }
                 0b0100011 => {
