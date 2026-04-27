@@ -511,11 +511,11 @@ fn main() {
         // artinya:
         //     setengah persen waktu cpu kita habiskan untuk reset VM
         //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | fcps {:10.1} | inst/sec {:10.1}\n\
+        print!("[{:10.4}] cases {:10} | fcps {:10.1} | Minst/sec {:10.1}\n\
                     reset {:8.4} | vm {:8.4}\n",
             elapsed, fuzz_cases,
             (fuzz_cases - last_cases) as f64 / time_delta,
-            (instrs - last_instrs) as f64 / time_delta,
+            (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
             resetc, vmc);
 
         last_cases = fuzz_cases;
