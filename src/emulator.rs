@@ -961,12 +961,18 @@ impl Emulator {
                         return Err(VmExit::Syscall);
                     }
                     4 => {
-                        return Err(
-                            VmExit::ReadFault(VirtAddr(exit_info as usize)));
+                        // Read fault
+                        // The JIT reports the address of the base of the
+                        // access, invoke the emulator to get the specific
+                        // byte which caused the fault
+                        return self.run_emu(instrs_execed);
                     }
                     5 => {
-                        return Err(
-                            VmExit::WriteFault(VirtAddr(exit_info as usize)));
+                        // Write fault
+                        // The JIT reports the address of the base of the
+                        // access, invoke the emulator to get the specific
+                        // byte which caused the fault
+                        return self.run_emu(instrs_execed)
                     }
                     _ => unreachable!(),
                 }
