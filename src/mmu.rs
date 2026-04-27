@@ -13,7 +13,7 @@ pub const DIRTY_BLOCK_SIZE: usize = 128;
 
 /// If `true` the logic for uninitialized memory tracking will be disabled
 /// all memory will be marked as readable if it has the RAW bit set.
-const DISABLE_UNINIT: bool = false;
+const DISABLE_UNINIT: bool = true;
 
 // Don't change these, they're hardcoded in the JIT (namely write vs raw dist,
 // during raw bit updates in writes)
