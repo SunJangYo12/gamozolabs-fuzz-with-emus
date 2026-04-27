@@ -13,7 +13,7 @@ use jitcache::JitCache;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
-const VERBOSE_GUEST_PRINTS: bool = true;
+const VERBOSE_GUEST_PRINTS: bool = false;
 
 fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
@@ -376,7 +376,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if true || _vmexit != VmExit::Exit {
+            if _vmexit != VmExit::Exit {
                 print!("Vmexit {:#x} {:#x?}\n",
                     emu.reg(Register::Pc), _vmexit);
             }
