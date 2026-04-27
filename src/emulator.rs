@@ -975,6 +975,9 @@ impl Emulator {
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
 
+            // Update instruction count stats
+            asm += "add r15, 1\n";
+
             // Produce the assembly statement to load RISCV-V `reg` into `x86reg`
             macro_rules! load_reg {
                 ($x86reg:expr, $reg:expr) => {
@@ -1208,7 +1211,7 @@ impl Emulator {
                         jc  .continue
 
                         mov qword [r10 + r12*8], rcx
-                        inc r12
+                        add r12, 1
 
                         .continue:
                         {loadtyp} {loadsz} [r8 + rax], {regtype}
