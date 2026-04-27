@@ -397,7 +397,7 @@ impl Emulator {
 
     // Run the VM using either the emulator or the JIT
     pub fn run(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
-        if let Some(jit_cache) = &self.jit_cache { // kalau `self.jit_cache` berisi sesuatu (Some), ambil isinya ke variable jit_cache(nama bebas)
+        if self.jit_cache.is_some() {
             self.run_jit(instrs_execed)
         } else {
             self.run_emu(instrs_execed)
@@ -915,6 +915,7 @@ impl Emulator {
 
                 let dirty_inuse = self.memory.dirty_len();
                 let new_dirty_inuse: usize;
+                let mut instcount = *instrs_execed;
 
                 asm!(r#"
                     call {entry}
@@ -930,10 +931,14 @@ impl Emulator {
                 inout("r12")  dirty_inuse => new_dirty_inuse,
                 in("r13")     self.registers.as_ptr(),
                 in("r14")     trans_table,
+                inout("r15")  instcount,
                 );
 
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, reentry_pc);
+
+                // Update instrs execed
+                *instrs_execed = instcount;
 
                 // Update the dirty state
                 self.memory.set_dirty_len(new_dirty_inuse);
@@ -951,8 +956,6 @@ impl Emulator {
                 }
             }
         }
-
-        Ok(())
     }
 
     // Generate the assembly string for `pc` during JIT
