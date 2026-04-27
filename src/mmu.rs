@@ -151,6 +151,19 @@ impl Mmu {
         Some(())
     }
 
+    // Get the dirty list length
+    #[inline]
+    pub fn dirty_len(&self) -> usize {
+        self.dirty.len()
+    }
+
+    // Set the dirty list length
+    #[inline]
+    pub unsafe fn set_dirty_len(&mut self, len: usize) {
+        self.dirty.set_len(len);
+    }
+
+
     /// Get the tuple of (memory ptr, permissions pointer, dirty pointer
     /// dirty_bitmap pointer)
     #[inline]

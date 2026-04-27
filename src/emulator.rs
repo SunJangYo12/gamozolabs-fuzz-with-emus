@@ -913,24 +913,31 @@ impl Emulator {
                 let exit_code : u64;
                 let reentry_pc: u64;
 
+                let dirty_inuse = self.memory.dirty_len();
+                let new_dirty_inuse: usize;
+
                 asm!(r#"
                     call {entry}
                 "#,
                 entry = in(reg) jit_addr,
-                out("rax") exit_code,
-                out("rbx") reentry_pc,
-                out("rcx") _,
-                in("r8")   memory,
-                in("r9")   perms,
-                in("r10")  dirty,
-                in("r11")  dirty_bitmap,
-                in("r12")  0u64,
-                in("r13")  self.registers.as_ptr(),
-                in("r14")  trans_table,
+                out("rax")    exit_code,
+                out("rbx")    reentry_pc,
+                out("rcx")    _,
+                in("r8")      memory,
+                in("r9")      perms,
+                in("r10")     dirty,
+                in("r11")     dirty_bitmap,
+                inout("r12")  dirty_inuse => new_dirty_inuse,
+                in("r13")     self.registers.as_ptr(),
+                in("r14")     trans_table,
                 );
 
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, reentry_pc);
+
+                // Update the dirty state
+                assert!(dirty_inuse == new_dirty_inuse);
+                self.memory.set_dirty_len(new_dirty_inuse);
 
                 match exit_code {
                     1 => {
