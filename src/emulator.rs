@@ -3,7 +3,7 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
-use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC};
+use crate::mmu::{VirtAddr, Perm, Mmu, PERM_EXEC, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 
 /// 64-bit RISC-V registers
@@ -1187,16 +1187,35 @@ impl Emulator {
                         _ => unreachable!(),
                     };
 
+                    // Make sure the dirty block size is same
+                    assert!(DIRTY_BLOCK_SIZE.count_ones() == 1 &&
+                             DIRTY_BLOCK_SIZE >= 8,
+                          "Dirty block size must be a power of two and >= 8");
+
+                    // Amount to shift to get the block from an address
+                    let dirty_block_shift = DIRTY_BLOCK_SIZE.trailing_zeros();
+
                     asm += &format!(r#"
                         {load_rax_from_rs1}
                         {load_rbx_from_rs2}
-                        {loadtyp} {loadsz} [r8 + rax + {imm}], {regtype}
+
+                        add rax, {imm}
+                        mov rcx, rax
+                        shr rcx, {dirty_block_shift}
+                        bts qword [r11], rcx
+                        jc  .continue
+
+                        int3
+
+                        .continue:
+                        {loadtyp} {loadsz} [r8 + rax], {regtype}
                     "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                         load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
                         regtype = regtype,
-                        imm = inst.imm);
+                        imm = inst.imm,
+                        dirty_block_shift = dirty_block_shift);
                 }
                 0b0010011 => {
                     // We know it's an Itype
