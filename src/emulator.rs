@@ -1229,11 +1229,12 @@ impl Emulator {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
 
-                    let (loadtyp, loadsz, regtype) = match inst.funct3 {
-                        0b000 => /* SB  */ ("mov", "byte", "bl"),
-                        0b001 => /* SH  */ ("mov", "word", "bx"),
-                        0b010 => /* SW  */ ("mov", "dword", "ebx"),
-                        0b011 => /* SD  */ ("mov", "qword", "rbx"),
+                    let (loadtyp, loadsz, regtype, loadrt, access_size) =
+                            match inst.funct3 {
+                        0b000 => /* SB  */ ("movzx", "byte",  "bl",  "ebx", 1),
+                        0b001 => /* SH  */ ("movzx", "word",  "bx",  "ebx", 2),
+                        0b010 => /* SW  */ ("mov",   "dword", "ebx", "ebx", 4),
+                        0b011 => /* SD  */ ("mov",   "qword", "rbx", "rbx", 8),
                         _ => unreachable!(),
                     };
 
@@ -1245,11 +1246,33 @@ impl Emulator {
                     // Amount to shift to get the block from an address
                     let dirty_block_shift = DIRTY_BLOCK_SIZE.trailing_zeros();
 
+                    // Compute the write permissions mask
+                    let mut perm_mask = 0;
+                    for ii in 0..access_size {
+                        perm_mask |= PERM_WRITE << (ii * 8)
+                    }
+
                     asm += &format!(r#"
                         {load_rax_from_rs1}
-                        {load_rbx_from_rs2}
-
                         add rax, {imm}
+
+                        cmp rax, {memory_len} - {access_size}
+                        ja  .fault
+
+                        {loadtyp} {loadrt}, {loadsz} [r9 + rax]
+                        mov rcx, {perm_mask}
+                        and rbx, rcx
+                        cmp rbx, rcx
+                        je  .nofault
+
+                        .fault:
+                        mov rcx, rax
+                        mov rbx, {pc}
+                        mov rax, 5
+                        add r15, {block_instrs}
+                        ret
+
+                        .nofault:
                         mov rcx, rax
                         shr rcx, {dirty_block_shift}
                         bts qword [r11], rcx
@@ -1259,13 +1282,20 @@ impl Emulator {
                         add r12, 1
 
                         .continue:
-                        {loadtyp} {loadsz} [r8 + rax], {regtype}
+                        {load_rbx_from_rs2}
+                        mov {loadsz} [r8 + rax], {regtype}
                     "#, load_rax_from_rs1 = load_reg!("rax", inst.rs1),
                         load_rbx_from_rs2 = load_reg!("rbx", inst.rs2),
                         loadtyp = loadtyp,
                         loadsz  = loadsz,
                         regtype = regtype,
                         imm = inst.imm,
+                        loadrt = loadrt,
+                        access_size = access_size,
+                        block_instrs = block_instrs,
+                        perm_mask = perm_mask,
+                        memory_len = self.memory.len(),
+                        pc = pc,
                         dirty_block_shift = dirty_block_shift);
                 }
                 0b0010011 => {
