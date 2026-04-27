@@ -1,5 +1,3 @@
-#![no_std]
-
 use core::arch::x86_64::*;
 
 /// Structure which gives access to a `hash` member function, allowing 128-bit
@@ -16,8 +14,9 @@ pub struct FalkHasher(());
 impl FalkHasher {
     /// Create a new `FalkHasher`
     pub fn new() -> Self {
-        let features = cpu::get_cpu_features();
-        assert!(features.aesni, "AES-NI required for falkhash");
+        // Make sure AES-NI is present on this CPU
+        assert!(std::is_x86_feature_detected!("aes"),
+            "AES-NI instruction not present, required for falkhash");
 
         // If AES is present it's safe to return an object which allows
         // use of `falkhash` from this point on
