@@ -473,7 +473,9 @@ fn main() {
 
         match vmexit {
             VmExit::Syscall => {
-                print!("Syscall {}\n", emu.reg(Register::A7));
+                if emu.reg(Register::A7) == 1024 { // open
+                    break;
+                }
 
                 if let Err(vmexit) = handle_syscall(&mut emu) {
                     break;
