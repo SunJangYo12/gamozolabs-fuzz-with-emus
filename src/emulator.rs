@@ -931,6 +931,7 @@ impl Emulator {
                 out("rax")    exit_code,
                 out("rbx")    reentry_pc,
                 out("rcx")    exit_info,
+                out("rdx")    _,
                 in("r8")      memory,
                 in("r9")      perms,
                 in("r10")     dirty,
@@ -1194,9 +1195,9 @@ impl Emulator {
                     };
 
                     // Compute the read permissions mask
-                    let mut perm_mask = 0;
+                    let mut perm_mask = 0u64;
                     for ii in 0..access_size {
-                        perm_mask |= PERM_READ << (ii * 8)
+                        perm_mask |= (PERM_READ as u64) << (ii * 8)
                     }
 
                     asm += &format!(r#"
@@ -1256,9 +1257,9 @@ impl Emulator {
                     let dirty_block_shift = DIRTY_BLOCK_SIZE.trailing_zeros();
 
                     // Compute the write permissions mask
-                    let mut perm_mask = 0;
+                    let mut perm_mask = 0u64;
                     for ii in 0..access_size {
-                        perm_mask |= PERM_WRITE << (ii * 8)
+                        perm_mask |= (PERM_WRITE as u64) << (ii * 8)
                     }
 
                     asm += &format!(r#"
@@ -1270,6 +1271,7 @@ impl Emulator {
 
                         {loadtyp} {loadrt}, {loadsz} [r9 + rax]
                         mov rcx, {perm_mask}
+                        mov rdx, rbx
                         and rbx, rcx
                         cmp rbx, rcx
                         je  .nofault
@@ -1282,8 +1284,11 @@ impl Emulator {
                         ret
 
                         .nofault:
-                        ; Update the RAW bit
-                        shl rbx, 2
+                        ; Get the raw bits and shift them into the read slot
+                        shl rcx, 2
+                        and rdx, rcx
+                        shr rdx, 3
+                        mov rbx, rdx
                         or {loadsz} [r9 + rax], {regtype}
 
                         mov rcx, rax
