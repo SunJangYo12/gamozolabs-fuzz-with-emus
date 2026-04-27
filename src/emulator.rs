@@ -964,6 +964,7 @@ impl Emulator {
         let mut asm = "[bits 64]\n".to_string();
 
         let mut pc = pc.0 as u64;
+        let mut block_instrs = 0;
         'next_inst: loop {
             // Get the current program counter
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
@@ -975,8 +976,8 @@ impl Emulator {
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
 
-            // Update instruction count stats
-            asm += "add r15, 1\n";
+            // Track number of instructions in the block
+            block_instrs += 1;
 
             // Produce the assembly statement to load RISCV-V `reg` into `x86reg`
             macro_rules! load_reg {
@@ -1033,6 +1034,9 @@ impl Emulator {
                         return Err(VmExit::JitOob);
                     }
 
+                    // Update instruction count stats
+                    asm += &format!("add r15, {}\n", block_instrs);
+
                     asm += &format!(r#"
                         mov rax, {ret}
                         {store_rd_from_rax}
@@ -1064,6 +1068,9 @@ impl Emulator {
                             // JALR
                             // Compute the return address
                             let ret = pc.wrapping_add(4);
+
+                            // Update instruction count stats
+                            asm += &format!("add r15, {}\n", block_instrs);
 
                             asm += &format!(r#"
                                 mov  rax, {ret}
