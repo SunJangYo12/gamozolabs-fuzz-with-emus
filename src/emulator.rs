@@ -3,7 +3,7 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
-use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_RAW, PERM_EXEC};
+use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 
@@ -1273,6 +1273,10 @@ impl Emulator {
                         ret
 
                         .nofault:
+                        ; Update the RAW bit
+                        shl rbx, 2
+                        or {loadsz} [r9 + rax], {regtype}
+
                         mov rcx, rax
                         shr rcx, {dirty_block_shift}
                         bts qword [r11], rcx

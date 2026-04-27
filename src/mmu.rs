@@ -15,6 +15,8 @@ pub const DIRTY_BLOCK_SIZE: usize = 128;
 /// all memory will be marked as readable if it has the RAW bit set.
 const DISABLE_UNINIT: bool = true;
 
+// Don't change these, they're hardcoded in the JIT (namely write vs raw dist,
+// during raw bit updates in writes)
 pub const PERM_READ:  u8 = 1 << 0;
 pub const PERM_WRITE: u8 = 1 << 1;
 pub const PERM_EXEC:  u8 = 1 << 2;
