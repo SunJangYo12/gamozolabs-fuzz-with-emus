@@ -890,17 +890,22 @@ impl Emulator {
                     self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
 
                 // Write out the assembly
-                let asmfn = std::env::temp_dir().join("tmp.asm");
+                let asmfn = std::env::temp_dir().join(
+                    format!("fwetmp_{:?}.asm", std::thread::current().id()));
+                let binfn = std::env::temp_dir().join(
+                    format!("fwetmp_{:?}.bin", std::thread::current().id()));
                 std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
                 // Invoke NASM to generate the binary
                 let res = Command::new("nasm").args(&[
-                    "-f", "bin", "-o", "test", asmfn.to_str().unwrap()
+                    "-f", "bin", "-o",
+                    binfn.to_str().unwrap(),
+                    asmfn.to_str().unwrap()
                 ]).status().expect("Failed to run nasm, is it in yout path?");
                 assert!(res.success(), "nasm returned an error");
 
                 // Read the binary
-                let tmp = std::fs::read("test")
+                let tmp = std::fs::read(&binfn)
                     .expect("Failed to read nasm output");
 
                 // Update the JIT tables
