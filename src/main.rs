@@ -354,8 +354,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
 
+            emu.fuzz_input.clear();
             emu.fuzz_input.extend_from_slice(include_bytes!("../xauth"));
-            print!("{}\n", emu.fuzz_input.len());
 
             let _vmexit = loop {
                 let it = rdtsc();
@@ -471,7 +471,7 @@ fn main() {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..1 { //2 thread
+    for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
