@@ -918,7 +918,7 @@ impl Emulator {
                 // Invoke the jit
                 let exit_code : u64;
                 let reentry_pc: u64;
-                let exit_info:  u64;
+                let _exit_info:  u64;
 
                 let dirty_inuse = self.memory.dirty_len();
                 let new_dirty_inuse: usize;
@@ -930,7 +930,7 @@ impl Emulator {
                 entry = in(reg) jit_addr,
                 out("rax")    exit_code,
                 out("rbx")    reentry_pc,
-                out("rcx")    exit_info,
+                out("rcx")    _exit_info,
                 out("rdx")    _,
                 in("r8")      memory,
                 in("r9")      perms,
