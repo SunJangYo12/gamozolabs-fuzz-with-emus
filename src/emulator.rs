@@ -936,7 +936,6 @@ impl Emulator {
                 self.set_reg(Register::Pc, reentry_pc);
 
                 // Update the dirty state
-                assert!(dirty_inuse == new_dirty_inuse);
                 self.memory.set_dirty_len(new_dirty_inuse);
 
                 match exit_code {
@@ -1205,7 +1204,8 @@ impl Emulator {
                         bts qword [r11], rcx
                         jc  .continue
 
-                        int3
+                        mov qword [r10 + r12*8], rcx
+                        inc r12
 
                         .continue:
                         {loadtyp} {loadsz} [r8 + rax], {regtype}
