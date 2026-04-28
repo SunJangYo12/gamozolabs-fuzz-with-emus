@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit, File};
 use jitcache::JitCache;
+use aht::Aht;
+use atomicvec::AtomicVec;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
@@ -399,7 +401,21 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
     }
 }
 
+struct Corpus {
+    /// Input has table to dedup inputs
+    input_hashes: Aht<u128, (), 1048576>,
+
+    /// Linear list of all inputs
+    inputs: AtomicVec<Vec<u8>, 1048576>,
+}
+
 fn main() {
+    // Create a corpus
+    let corpus = Arc::new(Corpus {
+        input_hashes: Aht::new(),
+        inputs: AtomicVec::new(),
+    });
+
     // Create a JIT cache
     let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
 
