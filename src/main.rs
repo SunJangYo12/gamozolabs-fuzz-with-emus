@@ -404,6 +404,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
     }
 }
 
+/// Information about inputs and coveragee
 struct Corpus {
     /// Input has table to dedup inputs
     input_hashes: Aht<u128, (), 1048576>,
