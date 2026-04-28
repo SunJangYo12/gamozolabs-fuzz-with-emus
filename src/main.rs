@@ -342,7 +342,7 @@ struct Statistics {
 }
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
-        stats: Arc<Mutex<Statistics>>) {
+        stats: Arc<Mutex<Statistics>>, corpus: Arc<Corpus>) {
     const BATCH_SIZE: usize = 10;
     loop {
         // Start a timer
@@ -515,9 +515,9 @@ fn main() {
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
-
+        let corpus = corpus.clone();
         std::thread::spawn(move || {
-            worker(new_emu, parent, stats);
+            worker(new_emu, parent, stats, corpus);
         });
     }
 
