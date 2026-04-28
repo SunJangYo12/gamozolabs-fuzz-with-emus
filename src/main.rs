@@ -5,12 +5,15 @@ pub mod mmu;
 pub mod emulator;
 pub mod jitcache;
 
+use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit, File};
 use jitcache::JitCache;
+
 use aht::Aht;
+use falkhash::FalkHasher;
 use atomicvec::AtomicVec;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
@@ -407,14 +410,32 @@ struct Corpus {
 
     /// Linear list of all inputs
     inputs: AtomicVec<Vec<u8>, 1048576>,
+
+    /// Hasher
+    hasher: FalkHasher,
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     // Create a corpus
     let corpus = Arc::new(Corpus {
         input_hashes: Aht::new(),
         inputs: AtomicVec::new(),
+        hasher: FalkHasher::new(),
     });
+    
+    // Load the initial corpus
+    for filename in std::fs::read_dir("inputs")? {
+        let filename = filename?.path();
+        let data = std::fs::read(filename)?;
+        let hash = corpus.hasher.hash(&data);
+
+        // Save the input and log it in the hash table
+        corpus.input_hashes.entry_or_insert(&hash, hash as usize, || {
+            corpus.inputs.push(Box::new(data));
+
+            Box::new(())
+        });
+    }
 
     // Create a JIT cache
     let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
