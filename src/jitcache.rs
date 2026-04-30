@@ -100,7 +100,9 @@ impl JitCache {
     /// Look up the JIT address for a given guest address
     pub fn lookup(&self, addr: VirtAddr) -> Option<usize> {
         // Make sure the address is aligned
-        assert!(addr.0 & 3 == 0, "Unaligned code address to JIT lookup");
+        if addr.0 & 3 != 0 {
+            return None;
+        }
 
         let addr = self.blocks[addr.0 / 4].load(Ordering::SeqCst);
         if addr == 0 {
