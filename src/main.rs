@@ -5,6 +5,7 @@ pub mod mmu;
 pub mod emulator;
 pub mod jitcache;
 
+use std::path::Path;
 use std::fs::File;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
@@ -431,8 +432,16 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 let pc  = VirtAddr(emu.reg(Register::Pc) as usize);
                 let key = (pc, fault_type, AddressType::from(vaddr)); 
                 corpus.unique_crashes.entry_or_insert(&key, pc.0, || {
+                    corpus.inputs.push(Box::new(emu.fuzz_input.clone()));
+
                     Box::new(())
                 });
+
+                // Save the crashing file
+                std::fs::write(Path::new("crashes").join(
+                    format!("{:#x}_{:?}_{:?}.crash",
+                            (key.0).0, key.1, key.2)),
+                    &emu.fuzz_input).expect("Failed to write fuzz input");
             }
 
             local_stats.fuzz_cases += 1;
@@ -470,6 +479,9 @@ pub struct Corpus {
 }
 
 fn main() -> io::Result<()> {
+    std::fs::create_dir_all("inputs")?;
+    std::fs::create_dir_all("crashes")?;
+
     // Create a corpus
     let corpus = Arc::new(Corpus {
         inputs: AtomicVec::new(),
