@@ -3,10 +3,3 @@
 [[package]]
 name = "atomicvec"
 version = "0.1.0"
-
-[[package]]
-name = "fuzz_with_emus"
-version = "0.1.0"
-dependencies = [
- "atomicvec",
-]

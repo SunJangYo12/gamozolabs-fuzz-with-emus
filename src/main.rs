@@ -5,11 +5,14 @@ pub mod mmu;
 pub mod emulator;
 pub mod jitcache;
 
+use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit, File};
 use jitcache::JitCache;
+
+use atomicvec::AtomicVec;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
@@ -340,7 +343,7 @@ struct Statistics {
 }
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
-        stats: Arc<Mutex<Statistics>>) {
+        stats: Arc<Mutex<Statistics>>, corpus: Arc<Corpus>) {
     const BATCH_SIZE: usize = 10;
     loop {
         // Start a timer
@@ -399,7 +402,30 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
     }
 }
 
-fn main() {
+struct Corpus {
+    /// Input hash table to dedup inputs
+    // inputs_hases: Aht<u128, (), 1048576>,
+
+    /// Linear list of all inputs
+    inputs: AtomicVec<Vec<u8>, 1048576>,
+}
+
+fn main() -> io::Result<()> {
+    // Create a corpus
+    let corpus = Arc::new(Corpus {
+        inputs: AtomicVec::new(),
+    });
+
+    // Load the initial corpus
+    for filename in std::fs::read_dir("inputs")? {
+        let filename = filename?.path();
+        let data = std::fs::read(filename)?;
+        corpus.inputs.push(Box::new(data));
+    }
+
+    print!("{}\n", corpus.inputs.len());
+
+
     // Create a JIT cache
     let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
 
@@ -499,9 +525,10 @@ fn main() {
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
+        let corpus  = corpus.clone();
 
         std::thread::spawn(move || {
-            worker(new_emu, parent, stats);
+            worker(new_emu, parent, stats, corpus);
         });
     }
 

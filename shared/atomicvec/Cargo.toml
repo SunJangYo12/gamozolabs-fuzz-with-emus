@@ -1,10 +1,9 @@
 [package]
-name = "fuzz_with_emus"
+name = "atomicvec"
 version = "0.1.0"
-authors = ["sunjangyo12 <sunjangyo12@gmail.com>"]
+authors = ["Brandon Falk <bfalk@gamozolabs.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-atomicvec = { path = "shared/atomicvec" }
