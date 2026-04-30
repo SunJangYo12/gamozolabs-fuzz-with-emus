@@ -119,6 +119,11 @@ impl Mmu {
         // Get the current allocation base
         let base = self.cur_alc;
 
+        // Return current base on 0 size allocations
+        if size == 0 {
+            return Some(base);
+        }
+
         // Cannot allocate
         if base.0 >= self.memory.len() {
             return None
