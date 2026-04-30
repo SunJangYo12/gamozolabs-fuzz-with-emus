@@ -1061,7 +1061,6 @@ impl Emulator {
             corpus.code_coverage.entry_or_insert(
                 &VirtAddr(pc as usize), pc as usize, || {
                     corpus.inputs.push(Box::new(self.fuzz_input.clone()));
-
                     Box::new(())
             });
 
