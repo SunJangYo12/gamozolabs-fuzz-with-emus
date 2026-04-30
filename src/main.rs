@@ -463,6 +463,9 @@ pub struct Corpus {
     /// Unique crashes
     /// Tuple is (PC, FaultType, AddressType)
     pub unique_crashes: Aht<(VirtAddr, FaultType, AddressType), (), 1048576>,
+
+    /// Code coverage, unique PCs which havee executd during fuzzing
+    pub code_coverage: Aht<VirtAddr, (), 1048576>,
 }
 
 fn main() -> io::Result<()> {
@@ -470,6 +473,7 @@ fn main() -> io::Result<()> {
     let corpus = Arc::new(Corpus {
         inputs: AtomicVec::new(),
         unique_crashes: Aht::new(),
+        code_coverage: Aht::new(),
     });
 
     // Load the initial corpus
@@ -617,9 +621,11 @@ fn main() -> io::Result<()> {
         //     setengah persen waktu cpu kita habiskan untuk reset VM
         //     meskipun kita sedang mengatur ulang 4,6 juta
         print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
-                    fcps {:10.1} | Minst/sec {:10.1} | reset {:8.4} | vm {:8.4}\n",
+                    fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
+                    reset {:8.4} | vm {:8.4}\n\n",
             elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
             (fuzz_cases - last_cases) as f64 / time_delta,
+            corpus.code_coverage.len(),
             (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
             resetc, vmc);
 

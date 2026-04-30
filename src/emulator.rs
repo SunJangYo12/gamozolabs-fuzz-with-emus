@@ -3,7 +3,6 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
-use std::collections::BTreeSet;
 use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
@@ -468,6 +467,12 @@ impl Emulator {
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
+
+            // Update code coverage
+            corpus.code_coverage.entry_or_insert(
+                &VirtAddr(pc as usize), pc as usize, || {
+                    Box::new(())
+            });
 
 //            print!("{}\n\n", self);
 
@@ -938,8 +943,8 @@ impl Emulator {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
-                let (asm, pcs) = 
-                    self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
+                let asm = 
+                    self.generate_jit(VirtAddr(pc as usize), num_blocks, corpus)?;
 
                 // Write out the assembly
                 let asmfn = std::env::temp_dir().join(
@@ -1033,9 +1038,8 @@ impl Emulator {
 
     // Generate the assembly string for `pc` during JIT
     // alse returns a set of all unique PCs lifted during this JIT process
-    pub fn generate_jit(&self, pc: VirtAddr, num_blocks: usize)
-            -> Result<(String, BTreeSet<VirtAddr>), VmExit> {
-        let mut pcs = BTreeSet::new();
+    pub fn generate_jit(&self, pc: VirtAddr, num_blocks: usize, corpus: &Corpus)
+            -> Result<String, VmExit> {
         let mut asm = "[bits 64]\n".to_string();
 
         let mut pc = pc.0 as u64;
@@ -1051,8 +1055,11 @@ impl Emulator {
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
 
-            // Log this PC as coverage
-            pcs.insert(VirtAddr(pc as usize));
+            // Update code coverage
+            corpus.code_coverage.entry_or_insert(
+                &VirtAddr(pc as usize), pc as usize, || {
+                    Box::new(())
+            });
 
             // Track number of instructions in the block
             block_instrs += 1;
@@ -1822,7 +1829,7 @@ impl Emulator {
             pc += 4;
         }
 
-        Ok((asm, pcs))
+        Ok(asm)
     }
 }
 
