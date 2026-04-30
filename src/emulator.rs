@@ -91,6 +91,28 @@ pub enum VmExit {
     WriteFault(VirtAddr),
 }
 
+/// Different types of fault
+pub enum FaultType {
+    // Access occured outside of program memory
+    Bounds,
+    Read,
+    Write,
+    Uninit,
+}
+
+impl VmExit {
+    /// If this is a crash it returns the faulting address and the fault type
+    pub fn is_crash(&self) -> Option<(FaultType, VirtAddr)> {
+        match *self {
+            VmExit::AddressMiss(addr, _) => Some((FaultType::Bounds, addr)),
+            VmExit::ReadFault(addr)      => Some((FaultType::Read,  addr)),
+            VmExit::UninitFault(addr)    => Some((FaultType::Uninit, addr)),
+            VmExit::WriteFault(addr)     => Some((FaultType::Write, addr)),
+            _ => None,
+        }
+    }
+}
+
 impl fmt::Display for Emulator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,

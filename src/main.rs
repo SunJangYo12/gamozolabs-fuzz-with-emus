@@ -353,6 +353,9 @@ struct Statistics {
     /// Number of risc-v instructions executed
     instrs_execed: u64,
 
+    /// Total number of crashes
+    crashes: u64,
+
     /// Total number of CPU cycles spent in the workers
     total_cycles: u64,
 
@@ -398,7 +401,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             }
 
-            let _vmexit = loop {
+            let vmexit = loop {
                 let it = rdtsc();
                 let vmexit = emu.run(&mut local_stats.instrs_execed)
                     .expect_err("Failed to execute emulator");
@@ -418,9 +421,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if _vmexit != VmExit::Exit {
-                print!("Vmexit {:#x} {:#x?}\n",
-                    emu.reg(Register::Pc), _vmexit);
+            if vmexit.is_crash().is_some() {
+                local_stats.crashes += 1;
             }
 
             local_stats.fuzz_cases += 1;
@@ -429,8 +431,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
         let mut stats = stats.lock().unwrap();
 
         stats.fuzz_cases    += local_stats.fuzz_cases;
+        stats.crashes       += local_stats.crashes;
         stats.instrs_execed += local_stats.instrs_execed;
-
         stats.reset_cycles  += local_stats.reset_cycles;
         stats.vm_cycles     += local_stats.vm_cycles;
 
@@ -599,9 +601,9 @@ fn main() -> io::Result<()> {
         // artinya:
         //     setengah persen waktu cpu kita habiskan untuk reset VM
         //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | fcps {:10.1} | Minst/sec {:10.1}\n\
-                    reset {:8.4} | vm {:8.4}\n",
-            elapsed, fuzz_cases,
+        print!("[{:10.4}] cases {:10} | crashes {:10} | fcps {:10.1} |\n   \
+                    Minst/sec {:10.1} | reset {:8.4} | vm {:8.4}\n",
+            elapsed, stats.crashes, fuzz_cases,
             (fuzz_cases - last_cases) as f64 / time_delta,
             (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
             resetc, vmc);
