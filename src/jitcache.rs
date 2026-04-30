@@ -104,7 +104,7 @@ impl JitCache {
             return None;
         }
 
-        let addr = self.blocks[addr.0 / 4].load(Ordering::SeqCst);
+        let addr = self.blocks.get(addr.0 / 4)?.load(Ordering::SeqCst);
         if addr == 0 {
             None
         } else {
