@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 atomicvec = { path = "shared/atomicvec" }
+aht = { path = "shared/aht" }

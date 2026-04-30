@@ -5,11 +5,12 @@ pub mod mmu;
 pub mod emulator;
 pub mod jitcache;
 
-use std::io;
+use std::fs::File;
+use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
-use emulator::{Emulator, Register, VmExit, File, FaultType, AddressType};
+use emulator::{Emulator, Register, VmExit, EmuFile, FaultType, AddressType};
 use jitcache::JitCache;
 
 use atomicvec::AtomicVec;
@@ -86,7 +87,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
 
             let file = emu.files.get_file(fd);
             if let Some(Some(file)) = file {
-                if file == &File::Stdout || file == &File::Stderr {
+                if file == &EmuFile::Stdout || file == &EmuFile::Stderr {
                     // Writes to stdout and stderr
 
                     // Get access to the underlying bytes to write
@@ -125,7 +126,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 return Ok(());
             }
 
-            if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+            if let Some(Some(EmuFile::FuzzInput { ref mut cursor } )) = file {
                 // Compute the ending cursor from this read
                 let result_cursor = core::cmp::min(
                     cursor.saturating_add(len),
@@ -167,7 +168,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 return Ok(());
             }
 
-            if let Some(Some(File::FuzzInput { ref mut cursor } )) = file {
+            if let Some(Some(EmuFile::FuzzInput { ref mut cursor } )) = file {
                 let new_cursor = match whence {
                     SEEK_SET => offset,
                     SEEK_CUR => (*cursor as i64).saturating_add(offset),
@@ -224,7 +225,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 let file = emu.files.get_file(fd).unwrap();
 
                 // Mark that this file should be backed by our fuzz input
-                *file = Some(File::FuzzInput { cursor: 0 });
+                *file = Some(EmuFile::FuzzInput { cursor: 0 });
 
                 // Return a new fd
                 emu.set_reg(Register::A0, fd as u64);
@@ -279,7 +280,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 return Ok(());
             }
 
-            if let Some(Some(File::FuzzInput { .. })) = file {
+            if let Some(Some(EmuFile::FuzzInput { .. })) = file {
                 let mut stat = Stat::default();
                 stat.st_dev = 0x803;
                 stat.st_ino = 0x81889;
@@ -598,40 +599,42 @@ fn main() -> io::Result<()> {
     let mut last_cases = 0;
     let mut last_instrs = 0;
     let mut last_time = Instant::now();
+
+    let mut log = File::create("stats.txt")?;
     loop {
-        std::thread::sleep(Duration::from_millis(1000));
+        std::thread::sleep(Duration::from_millis(10));
 
         // Get access to the stats structure
         let stats = stats.lock().unwrap();
-
-        let time_delta = last_time.elapsed().as_secs_f64();
         let elapsed = start.elapsed().as_secs_f64();
 
-        let fuzz_cases = stats.fuzz_cases;
-        let instrs = stats.instrs_execed;
+        write!(log, "{:12.6} {:10} {:10} {:10}\n", elapsed, stats.fuzz_cases,
+                corpus.code_coverage.len(), corpus.unique_crashes.len())?;
 
-        // Compute perfomace numbers
-        let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
-        let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
+        if last_time.elapsed() >= Duration::from_millis(1000) {
+            let time_delta = last_time.elapsed().as_secs_f64();
 
+            let fuzz_cases = stats.fuzz_cases;
+            let instrs = stats.instrs_execed;
 
-        // example performance:
-        //     reset 0.0046 | vm 0.9918
-        // artinya:
-        //     setengah persen waktu cpu kita habiskan untuk reset VM
-        //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
-                    fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
-                    reset {:8.4} | vm {:8.4}\n\n",
-            elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
-            (fuzz_cases - last_cases) as f64 / time_delta,
-            corpus.code_coverage.len(),
-            (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
-            resetc, vmc);
+            // Compute perfomace numbers
+            let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
+            let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
 
-        last_cases = fuzz_cases;
-        last_instrs = instrs;
-        last_time   = Instant::now();
+            print!("[{:10.4}] cases {:10} | crashes {:10} | \n\
+                        unique crashs {:10}\n\
+                        fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
+                        reset {:8.4} | vm {:8.4}\n",
+                elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
+                (fuzz_cases - last_cases) as f64 / time_delta,
+                corpus.code_coverage.len(),
+                (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
+                resetc, vmc);
+
+            last_cases = fuzz_cases;
+            last_instrs = instrs;
+            last_time   = Instant::now();
+        }
     }
 }
 

@@ -144,7 +144,7 @@ impl JitCache {
         // Update the in use for the JIT
         jit.1 += code.len();
 
-        print!("Added jit for {:#x} -> {:#x}\n", addr.0, new_addr);
+        //print!("Added jit for {:#x} -> {:#x}\n", addr.0, new_addr);
 
         // Return the newly allocated JIT
         new_addr

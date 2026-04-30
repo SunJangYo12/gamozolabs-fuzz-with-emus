@@ -327,7 +327,7 @@ impl From<u32> for Utype {
 
 /// An open file
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum File {
+pub enum EmuFile {
     Stdin,
     Stdout,
     Stderr,
@@ -338,11 +338,11 @@ pub enum File {
 
 /// An list of all open files
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Files(Vec<Option<File>>);
+pub struct Files(Vec<Option<EmuFile>>);
 
 impl Files {
     /// Get access to a file descriptor for `fd`
-    pub fn get_file(&mut self, fd: usize) -> Option<&mut Option<File>> {
+    pub fn get_file(&mut self, fd: usize) -> Option<&mut Option<EmuFile>> {
         self.0.get_mut(fd)
     }
 }
@@ -373,9 +373,9 @@ impl Emulator {
             registers:  [0; 33],
             fuzz_input: Vec::new(),
             files: Files(vec![
-                Some(File::Stdin),
-                Some(File::Stdout),
-                Some(File::Stderr),
+                Some(EmuFile::Stdin),
+                Some(EmuFile::Stdout),
+                Some(EmuFile::Stderr),
             ]),
             jit_cache: None,
         }
