@@ -507,21 +507,21 @@ fn main() -> io::Result<()> {
         Section {
             file_off:    0x0000000000000000,            // first LOAD
             virt_addr:   VirtAddr(0x0000000000010000),
-            file_size:   0x00000000000e1b74,
-            mem_size:    0x00000000000e1b74,
+            file_size:   0x0000000000145938,
+            mem_size:    0x0000000000145938,
             permissions: Perm(PERM_READ | PERM_EXEC),
         },
         Section {
-            file_off:    0x00000000000e2000,            // second LOAD
-            virt_addr:   VirtAddr(0x00000000000f2000),
-            file_size:   0x0000000000001e32,
-            mem_size:    0x00000000000046c8,
+            file_off:    0x0000000000146000,            // second LOAD
+            virt_addr:   VirtAddr(0x0000000000156000),
+            file_size:   0x0000000000004262,
+            mem_size:    0x000000000000ba28,
             permissions: Perm(PERM_READ | PERM_WRITE),
         },
     ]).expect("Failed to load test application into address space");
 
     // Set the program entry point
-    emu.set_reg(Register::Pc, 0x104e8);
+    emu.set_reg(Register::Pc, 0x1092c);
 
     // Set up a stack
     let stack = emu.memory.allocate(32 * 1024)
