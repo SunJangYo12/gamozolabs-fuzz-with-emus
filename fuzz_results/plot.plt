@@ -4,4 +4,5 @@ set xlabel "Fuzz Cases"
 set ylabel "Count"
 set logscale x
 set datafile separator ","
+set grid mxtics, xtics, ytics, mytics
 plot "stats.txt" u 2:3 w l t "Coverage"
