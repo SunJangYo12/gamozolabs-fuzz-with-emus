@@ -608,7 +608,7 @@ fn main() -> io::Result<()> {
         let stats = stats.lock().unwrap();
         let elapsed = start.elapsed().as_secs_f64();
 
-        write!(log, "{:12.6} {:10} {:10} {:10}\n", elapsed, stats.fuzz_cases,
+        write!(log, "{:.6},{},{},{}\n", elapsed, stats.fuzz_cases,
                 corpus.code_coverage.len(), corpus.unique_crashes.len())?;
 
         if last_time.elapsed() >= Duration::from_millis(1000) {
@@ -621,8 +621,7 @@ fn main() -> io::Result<()> {
             let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
             let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
 
-            print!("[{:10.4}] cases {:10} | crashes {:10} | \n\
-                        unique crashs {:10}\n\
+            print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
                         fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
                         reset {:8.4} | vm {:8.4}\n",
                 elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
