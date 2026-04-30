@@ -471,6 +471,28 @@ fn main() {
         let vmexit = emu.run(&mut tmp)
             .expect_err("Failed to execute emulator");
 
+        print!("{:?}\n", vmexit);
+
+        match vmexit {
+            VmExit::Syscall => {
+                if let Err(vmexit) = handle_syscall(&mut emu) {
+                    break;
+                }
+
+                // Advance PC
+                let pc = emu.reg(Register::Pc);
+                emu.set_reg(Register::Pc, pc.wrapping_add(4));
+            }
+            _ => break,
+        }
+    }
+
+    loop {
+        // Run the emulator to a certain point
+        let mut tmp = 0;
+        let vmexit = emu.run(&mut tmp)
+            .expect_err("Failed to execute emulator");
+
         match vmexit {
             VmExit::Syscall => {
                 if emu.reg(Register::A7) == 1024 { // open
