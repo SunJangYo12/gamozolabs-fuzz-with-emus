@@ -1,7 +1,7 @@
-set term wxt persist
+set term wxt persist size 800,500
 set title "Fuzzer Stats"
 set xlabel "Fuzz Cases"
 set ylabel "Count"
 set logscale x
 set datafile separator ","
-plot "stats.txt" u 1:2 w l
+plot "stats.txt" u 2:3 w l t "Coverage"
