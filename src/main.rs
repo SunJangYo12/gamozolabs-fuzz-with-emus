@@ -22,6 +22,24 @@ fn rdtsc() -> u64 {
     unsafe { std::arch::x86_64::_rdtsc() }
 }
 
+struct Rng(u64);
+impl Rng {
+    /// Create a new random number generator
+    fn new() -> Self {
+        Rng(0x342c4d6241337665 ^ rdtsc())
+    }
+
+    // Generate a random number
+    #[inline]
+    fn rand(&mut self) -> usize {
+        let val = self.0;
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 17;
+        self.0 ^= self.0 << 43;
+        val as usize
+    }
+}
+
 fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
@@ -345,6 +363,10 @@ struct Statistics {
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>, corpus: Arc<Corpus>) {
     const BATCH_SIZE: usize = 10;
+
+    // Create a new random number generator
+    let mut rng = Rng::new();
+
     loop {
         // Start a timer
         let batch_start = rdtsc();
@@ -357,8 +379,14 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
 
+            // Clear the fuzz input
             emu.fuzz_input.clear();
-            emu.fuzz_input.extend_from_slice(include_bytes!("../xauth"));
+
+            // Pick a random file from the corpus as an input
+            let sel = rng.rand() % corpus.inputs.len();
+            if let Some(input) = corpus.inputs.get(sel) {
+                emu.fuzz_input.extend_from_slice(input);
+            }
 
             let _vmexit = loop {
                 let it = rdtsc();
@@ -402,6 +430,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
     }
 }
 
+/// Information about inputs and corpus
 struct Corpus {
     /// Input hash table to dedup inputs
     // inputs_hases: Aht<u128, (), 1048576>,
@@ -422,9 +451,6 @@ fn main() -> io::Result<()> {
         let data = std::fs::read(filename)?;
         corpus.inputs.push(Box::new(data));
     }
-
-    print!("{}\n", corpus.inputs.len());
-
 
     // Create a JIT cache
     let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
