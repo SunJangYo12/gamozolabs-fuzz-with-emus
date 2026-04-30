@@ -100,6 +100,7 @@ pub enum VmExit {
 pub enum FaultType {
     // Access occured outside of program memory
     Bounds,
+    Exec,
     Read,
     Write,
     Uninit,
@@ -134,6 +135,7 @@ impl VmExit {
         match *self {
             VmExit::AddressMiss(addr, _) => Some((FaultType::Bounds, addr)),
             VmExit::ReadFault(addr)      => Some((FaultType::Read,  addr)),
+            VmExit::ExecFault(addr)      => Some((FaultType::Exec,  addr)),
             VmExit::UninitFault(addr)    => Some((FaultType::Uninit, addr)),
             VmExit::WriteFault(addr)     => Some((FaultType::Write, addr)),
             _ => None,
