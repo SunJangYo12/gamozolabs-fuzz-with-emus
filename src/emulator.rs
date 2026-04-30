@@ -81,6 +81,9 @@ pub enum VmExit {
     /// The address requested was not in bounds of the guest memory space
     AddressMiss(VirtAddr, usize),
 
+    /// an executen of a `VirtAddr` failed
+    ExecFault(VirtAddr),
+
     /// An read of `VirtAddr` failed due to missong permissions
     ReadFault(VirtAddr),
 
@@ -459,8 +462,17 @@ impl Emulator {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
+
+            // Check alignment
+            if pc & 3 != 0 {
+                // Code was unaligned, return a code fetch fault
+                return Err(VmExit::ExecFault(VirtAddr(pc as usize)));
+            }
+
+            // Read the instruction
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
-                                                    Perm(PERM_EXEC))?;
+                                                    Perm(PERM_EXEC))
+                .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
             // Update number of instructions executed
             *instrs_execed += 1;
@@ -1047,9 +1059,16 @@ impl Emulator {
         let mut pc = pc.0 as u64;
         let mut block_instrs = 0;
         'next_inst: loop {
-            // Get the current program counter
+            // Check alignment
+            if pc & 3 != 0 {
+                // Code was unaligned, return a code fetch fault
+                return Err(VmExit::ExecFault(VirtAddr(pc as usize)));
+            }
+
+            // Read the instruction
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
-                                                    Perm(PERM_EXEC))?;
+                                                    Perm(PERM_EXEC))
+                .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
