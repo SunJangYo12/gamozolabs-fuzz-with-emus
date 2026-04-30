@@ -92,12 +92,36 @@ pub enum VmExit {
 }
 
 /// Different types of fault
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FaultType {
     // Access occured outside of program memory
     Bounds,
     Read,
     Write,
     Uninit,
+}
+
+/// Different buckets for addresses
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AddressType {
+    /// Address was between [0, 32KiB)
+    Null,
+
+    /// Address was between [-32KiB, 0)
+    Negative,
+
+    /// Address was normal
+    Normal,
+}
+
+impl From<VirtAddr> for AddressType {
+    fn from(val: VirtAddr) -> Self {
+        match val.0 as i64 {
+            (0..=32767)  => AddressType::Null,
+            (-32768..=-1) => AddressType::Negative,
+            _ => AddressType::Normal,
+        }
+    }
 }
 
 impl VmExit {

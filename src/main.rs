@@ -9,10 +9,11 @@ use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
-use emulator::{Emulator, Register, VmExit, File};
+use emulator::{Emulator, Register, VmExit, File, FaultType, AddressType};
 use jitcache::JitCache;
 
 use atomicvec::AtomicVec;
+use aht::Aht;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
 /// own stdout and stderr
@@ -421,8 +422,16 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 }
             };
 
-            if vmexit.is_crash().is_some() {
+            if let Some((fault_type, vaddr)) = vmexit.is_crash() {
+                // Update crash stats
                 local_stats.crashes += 1;
+
+                // Attempt to update hash table
+                let pc  = VirtAddr(emu.reg(Register::Pc) as usize);
+                let key = (pc, fault_type, AddressType::from(vaddr)); 
+                corpus.unique_crashes.entry_or_insert(&key, pc.0, || {
+                    Box::new(())
+                });
             }
 
             local_stats.fuzz_cases += 1;
@@ -449,12 +458,17 @@ struct Corpus {
 
     /// Linear list of all inputs
     inputs: AtomicVec<Vec<u8>, 1048576>,
+
+    /// Unique crashes
+    /// Tuple is (PC, FaultType, AddressType)
+    unique_crashes: Aht<(VirtAddr, FaultType, AddressType), (), 1048576>,
 }
 
 fn main() -> io::Result<()> {
     // Create a corpus
     let corpus = Arc::new(Corpus {
         inputs: AtomicVec::new(),
+        unique_crashes: Aht::new(),
     });
 
     // Load the initial corpus
@@ -601,9 +615,9 @@ fn main() -> io::Result<()> {
         // artinya:
         //     setengah persen waktu cpu kita habiskan untuk reset VM
         //     meskipun kita sedang mengatur ulang 4,6 juta
-        print!("[{:10.4}] cases {:10} | crashes {:10} | fcps {:10.1} |\n   \
-                    Minst/sec {:10.1} | reset {:8.4} | vm {:8.4}\n",
-            elapsed, fuzz_cases, stats.crashes,
+        print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
+                    fcps {:10.1} | Minst/sec {:10.1} | reset {:8.4} | vm {:8.4}\n",
+            elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
             (fuzz_cases - last_cases) as f64 / time_delta,
             (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
             resetc, vmc);
