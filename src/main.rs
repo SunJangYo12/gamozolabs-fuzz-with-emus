@@ -391,6 +391,13 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                 emu.fuzz_input.extend_from_slice(input);
             }
 
+            if emu.fuzz_input.len() > 0 {
+                for _ in 0..rng.rand() % 16 {
+                    let sel = rng.rand() % emu.fuzz_input.len();
+                    emu.fuzz_input[sel] = rng.rand() as u8;
+                }
+            }
+
             let _vmexit = loop {
                 let it = rdtsc();
                 let vmexit = emu.run(&mut local_stats.instrs_execed)
