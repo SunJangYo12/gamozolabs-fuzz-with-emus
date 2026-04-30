@@ -1,7 +1,9 @@
 set term wxt persist size 800,500
 set title "Fuzzer Stats"
 set xlabel "Fuzz Cases"
-set ylabel "Count"
+set ylabel "Coverage"
+set y2label "Crashes"
+set y2tics
 set logscale x
 set datafile separator ","
 set grid mxtics, xtics, ytics, mytics
