@@ -3,9 +3,11 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
+use std::collections::BTreeSet;
 use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
+use crate::Corpus;
 
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -443,16 +445,18 @@ impl Emulator {
     }
 
     // Run the VM using either the emulator or the JIT
-    pub fn run(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+    pub fn run(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+            -> Result<(), VmExit> {
         if self.jit_cache.is_some() {
-            self.run_jit(instrs_execed)
+            self.run_jit(instrs_execed, corpus)
         } else {
-            self.run_emu(instrs_execed)
+            self.run_emu(instrs_execed, corpus)
         }
     }
 
     // Run the VM using the emulator
-    pub fn run_emu(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+    pub fn run_emu(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+            -> Result<(), VmExit> {
         'next_inst: loop {
             // Get the current program counter
             let pc = self.reg(Register::Pc);
@@ -909,7 +913,8 @@ impl Emulator {
     }
 
     /// Run the VM using the JIT
-    pub fn run_jit(&mut self, instrs_execed: &mut u64) -> Result<(), VmExit> {
+    pub fn run_jit(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+            -> Result<(), VmExit> {
         // Get the JIT address
         let (memory, perms, dirty, dirty_bitmap) = self.memory.jit_addrs();
 
@@ -933,7 +938,7 @@ impl Emulator {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
-                let asm = 
+                let (asm, pcs) = 
                     self.generate_jit(VirtAddr(pc as usize), num_blocks)?;
 
                 // Write out the assembly
@@ -1011,14 +1016,14 @@ impl Emulator {
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed);
+                        return self.run_emu(instrs_execed, corpus);
                     }
                     5 => {
                         // Write fault
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed)
+                        return self.run_emu(instrs_execed, corpus)
                     }
                     _ => unreachable!(),
                 }
@@ -1027,8 +1032,10 @@ impl Emulator {
     }
 
     // Generate the assembly string for `pc` during JIT
+    // alse returns a set of all unique PCs lifted during this JIT process
     pub fn generate_jit(&self, pc: VirtAddr, num_blocks: usize)
-            -> Result<String, VmExit> {
+            -> Result<(String, BTreeSet<VirtAddr>), VmExit> {
+        let mut pcs = BTreeSet::new();
         let mut asm = "[bits 64]\n".to_string();
 
         let mut pc = pc.0 as u64;
@@ -1043,6 +1050,9 @@ impl Emulator {
 
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
+
+            // Log this PC as coverage
+            pcs.insert(VirtAddr(pc as usize));
 
             // Track number of instructions in the block
             block_instrs += 1;
@@ -1812,7 +1822,7 @@ impl Emulator {
             pc += 4;
         }
 
-        Ok(asm)
+        Ok((asm, pcs))
     }
 }
 

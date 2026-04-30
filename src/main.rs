@@ -404,7 +404,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
             let vmexit = loop {
                 let it = rdtsc();
-                let vmexit = emu.run(&mut local_stats.instrs_execed)
+                let vmexit = emu.run(&mut local_stats.instrs_execed, &*corpus)
                     .expect_err("Failed to execute emulator");
                 local_stats.vm_cycles += rdtsc() - it;
 
@@ -452,16 +452,17 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 }
 
 /// Information about inputs and corpus
-struct Corpus {
+pub struct Corpus {
     /// Input hash table to dedup inputs
     // inputs_hases: Aht<u128, (), 1048576>,
 
     /// Linear list of all inputs
-    inputs: AtomicVec<Vec<u8>, 1048576>,
+    /// Data untuk antar thread tanpa race
+    pub inputs: AtomicVec<Vec<u8>, 1048576>,
 
     /// Unique crashes
     /// Tuple is (PC, FaultType, AddressType)
-    unique_crashes: Aht<(VirtAddr, FaultType, AddressType), (), 1048576>,
+    pub unique_crashes: Aht<(VirtAddr, FaultType, AddressType), (), 1048576>,
 }
 
 fn main() -> io::Result<()> {
@@ -546,7 +547,7 @@ fn main() -> io::Result<()> {
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
-        let vmexit = emu.run(&mut tmp)
+        let vmexit = emu.run_emu(&mut tmp, &*corpus)
             .expect_err("Failed to execute emulator");
 
         match vmexit {
