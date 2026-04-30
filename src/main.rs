@@ -541,7 +541,7 @@ fn main() -> io::Result<()> {
                     break;
                 }
 
-                if let Err(vmexit) = handle_syscall(&mut emu) {
+                if let Err(_vmexit) = handle_syscall(&mut emu) {
                     break;
                 }
 
@@ -603,7 +603,7 @@ fn main() -> io::Result<()> {
         //     meskipun kita sedang mengatur ulang 4,6 juta
         print!("[{:10.4}] cases {:10} | crashes {:10} | fcps {:10.1} |\n   \
                     Minst/sec {:10.1} | reset {:8.4} | vm {:8.4}\n",
-            elapsed, stats.crashes, fuzz_cases,
+            elapsed, fuzz_cases, stats.crashes,
             (fuzz_cases - last_cases) as f64 / time_delta,
             (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
             resetc, vmc);
