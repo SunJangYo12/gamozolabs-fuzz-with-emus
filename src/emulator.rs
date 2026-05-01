@@ -1067,7 +1067,7 @@ impl Emulator {
 
         // First in the block, check for an instruction timeout
         asm += &format!(r#"
-            cmp r15, 10_000
+            cmp r15, 10000000
             jb  no_timeout
 
             mov rax, 6
