@@ -73,6 +73,9 @@ pub struct JitCache {
 // 1 - branch resolution issue, rbx = PC that was not present
 // 2 - ECALL instruction
 // 3 - EBREAK instruction
+// 4 - Read fualt, rcx = guest faulting address
+// 5 - Write fualt, rcx = guest faulting address
+// 6 - Instruction timeout
 
 impl JitCache {
     /// Allocates a new `JitCache` which is capable of handling up to

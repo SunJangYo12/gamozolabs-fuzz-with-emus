@@ -437,6 +437,9 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.reset(&*original);
             local_stats.reset_cycles += rdtsc() - it;
 
+            // Number of instructions executed this fuzz case
+            let mut run_instrs = 0u64;
+
             // Clear the fuzz input
             emu.fuzz_input.clear();
 
@@ -455,7 +458,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
             let vmexit = loop {
                 let it = rdtsc();
-                let vmexit = emu.run(&mut local_stats.instrs_execed, &*corpus)
+                let vmexit = emu.run(&mut run_instrs, &*corpus)
                     .expect_err("Failed to execute emulator");
                 local_stats.vm_cycles += rdtsc() - it;
 
@@ -493,7 +496,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
                     &emu.fuzz_input).expect("Failed to write fuzz input");
             }
 
-            local_stats.fuzz_cases += 1;
+            local_stats.instrs_execed += run_instrs;
+            local_stats.fuzz_cases    += 1;
         }
         // Get access to statistics
         let mut stats = stats.lock().unwrap();
@@ -641,7 +645,7 @@ fn main() -> io::Result<()> {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..1 { //2 thread
+    for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();

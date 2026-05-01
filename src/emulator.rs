@@ -1058,6 +1058,18 @@ impl Emulator {
             -> Result<String, VmExit> {
         let mut asm = "[bits 64]\n".to_string();
 
+        // First in the block, check for an instruction timeout
+        asm += &format!(r#"
+            cmp r15, 10000000
+            jb  no_timeout
+
+            mov rax, 6
+            mov rbx, {pc}
+            ret
+
+            no_timeout
+        "#, pc = pc.0);
+
         let mut pc = pc.0 as u64;
         let mut block_instrs = 0;
         'next_inst: loop {
