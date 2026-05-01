@@ -547,6 +547,29 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     Ok(())
 }
 
+fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    let nmemb = emu.reg(Register::A0) as usize;
+    let size = emu.reg(Register::A1) as usize;
+
+    let result = size.checked_mul(nmemb).and_then(|size| {
+        let alc = emu.memory.allocate(size)?;
+        let tmp = emu.memory.peek(alc, size, Perm(PERM_WRITE))
+            .expect("New allocation not writeable?");
+
+        tmp.iter_mut().for_each(|x| *x = 0);
+        Some(alc)
+    }).unwrap_or(VirtAddr(0));
+
+    emu.set_reg(Register::A0, result.0 as u64);
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
+    Ok(())
+}
+
+fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
+    Ok(())
+}
+
 fn main() -> io::Result<()> {
     std::fs::create_dir_all("inputs")?;
     std::fs::create_dir_all("crashes")?;
@@ -590,6 +613,8 @@ fn main() -> io::Result<()> {
     ]).expect("Failed to load test application into address space");
 
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // malloc_re hasil lifting pc
+    emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // hook _calloc_r
+    emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp); // hook _free_r
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);
