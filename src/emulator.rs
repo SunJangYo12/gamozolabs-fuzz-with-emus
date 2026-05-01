@@ -3,6 +3,7 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
+use std::collections::BTreeMap;
 use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
@@ -369,6 +370,9 @@ pub struct Emulator {
     /// File handle table (indexed by file descriptor)
     pub files: Files,
 
+    /// Breakpoint callback
+    breakpoints: BTreeMap<VirtAddr, fn(&mut Emulator)>,
+
     /// JIT cache, If we are using a JIT
     jit_cache: Option<Arc<JitCache>>,
 }
@@ -386,17 +390,19 @@ impl Emulator {
                 Some(EmuFile::Stderr),
             ]),
             jit_cache: None,
+            breakpoints: BTreeMap::new(),
         }
     }
 
     /// Fork an emulator into a new emulator which will diff from the original
     pub fn fork(&self) -> Self {
         Emulator {
-            memory:     self.memory.fork(),
-            registers:  self.registers.clone(),
-            fuzz_input: self.fuzz_input.clone(),
-            files:      self.files.clone(),
-            jit_cache : self.jit_cache.clone(),
+            memory:      self.memory.fork(),
+            registers:   self.registers.clone(),
+            fuzz_input:  self.fuzz_input.clone(),
+            files:       self.files.clone(),
+            jit_cache:   self.jit_cache.clone(),
+            breakpoints: self.breakpoints.clone(),
         }
     }
 
