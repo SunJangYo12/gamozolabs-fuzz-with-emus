@@ -117,7 +117,7 @@ impl Mmu {
     /// Allocate a region of memory as RW in the address space
     pub fn allocate(&mut self, size: usize) -> Option<VirtAddr> {
         // Add some padding and alignment
-        let align_size = (size + 0xfff) & !0xf;
+        let align_size = (size + 0x1f) & !0xf;
 
         // Get the current allocation base
         let base = self.cur_alc;
