@@ -81,6 +81,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     match num {
         214 => {
             // brk()
+            panic!("Not expecting brk");
+            /*
             let req_base = emu.reg(Register::A0);
             let cur_base = emu.memory.allocate(0).unwrap();
 
@@ -108,7 +110,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
                 emu.set_reg(Register::A0, !0);
             }
 
-            Ok(())
+            Ok(())*/
         }
         64 => {
             // write()
@@ -652,7 +654,7 @@ fn main() -> io::Result<()> {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();

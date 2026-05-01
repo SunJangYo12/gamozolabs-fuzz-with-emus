@@ -1132,6 +1132,8 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
+            print!("Lifting {:#x}\n", pc);
+
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
