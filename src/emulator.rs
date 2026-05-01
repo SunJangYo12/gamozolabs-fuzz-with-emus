@@ -1112,6 +1112,18 @@ impl Emulator {
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
 
+            // Insert breakpoint if needed
+            if self.breakpoints.contains_key(&VirtAddr(pc as usize)) {
+                asm += &format!(r#"
+                    lea rcx, [rel .after_bp]
+                    mov rax, 7
+                    mov rbx, {pc}
+                    ret
+
+                    .after_bp:
+                "#, pc = pc);
+            }
+
             // Update code coverage
             corpus.code_coverage.entry_or_insert(
                 &VirtAddr(pc as usize), pc as usize, || {
