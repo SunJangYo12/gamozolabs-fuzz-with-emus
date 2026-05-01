@@ -1067,7 +1067,7 @@ impl Emulator {
             mov rbx, {pc}
             ret
 
-            no_timeout
+            no_timeout:
         "#, pc = pc.0);
 
         let mut pc = pc.0 as u64;
