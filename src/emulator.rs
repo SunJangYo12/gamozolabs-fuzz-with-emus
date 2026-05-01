@@ -960,55 +960,64 @@ impl Emulator {
         // Get the translation table
         let trans_table = self.jit_cache.as_ref().unwrap().translation_table();
 
+        // If `Some`, we re-entry the JIT by jumpong directly to this
+        // address, ignoring PC
+        let mut override_jit_addr = None;
+
         loop {
-            // Get the current PC
-            let pc  = self.reg(Register::Pc);
-            let (jit_addr, num_blocks) = {
-                let jit_cache = self.jit_cache.as_ref().unwrap();
-                (
-                    jit_cache.lookup(VirtAddr(pc as usize)),
-                    jit_cache.num_blocks()
-                )
-            };
-
-            let jit_addr = if let Some(jit_addr) = jit_addr {
-                jit_addr
+            let jit_addr = if let Some(override_jit_addr) =
+                    override_jit_addr.take() {
+                override_jit_addr
             } else {
-                // Go through each instruction in the block, and accumulate an
-                // assembly string which we will assembly using `nasm` on the
-                // command line
-                let asm = 
-                    self.generate_jit(VirtAddr(pc as usize), num_blocks, corpus)?;
+                // Get the current PC
+                let pc  = self.reg(Register::Pc);
+                let (jit_addr, num_blocks) = {
+                    let jit_cache = self.jit_cache.as_ref().unwrap();
+                    (
+                        jit_cache.lookup(VirtAddr(pc as usize)),
+                        jit_cache.num_blocks()
+                    )
+                };
 
-                // Write out the assembly
-                let asmfn = std::env::temp_dir().join(
-                    format!("fwetmp_{:?}.asm", std::thread::current().id()));
-                let binfn = std::env::temp_dir().join(
-                    format!("fwetmp_{:?}.bin", std::thread::current().id()));
-                std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
+                if let Some(jit_addr) = jit_addr {
+                    jit_addr
+                } else {
+                    // Go through each instruction in the block, and accumulate an
+                    // assembly string which we will assembly using `nasm` on the
+                    // command line
+                    let asm = 
+                        self.generate_jit(VirtAddr(pc as usize), num_blocks, corpus)?;
 
-                // Invoke NASM to generate the binary
-                let res = Command::new("nasm").args(&[
-                    "-f", "bin", "-o",
-                    binfn.to_str().unwrap(),
-                    asmfn.to_str().unwrap()
-                ]).status().expect("Failed to run nasm, is it in yout path?");
-                assert!(res.success(), "nasm returned an error");
+                    // Write out the assembly
+                    let asmfn = std::env::temp_dir().join(
+                        format!("fwetmp_{:?}.asm", std::thread::current().id()));
+                    let binfn = std::env::temp_dir().join(
+                        format!("fwetmp_{:?}.bin", std::thread::current().id()));
+                    std::fs::write(&asmfn, &asm).expect("Failed to write out asm");
 
-                // Read the binary
-                let tmp = std::fs::read(&binfn)
-                    .expect("Failed to read nasm output");
+                    // Invoke NASM to generate the binary
+                    let res = Command::new("nasm").args(&[
+                        "-f", "bin", "-o",
+                        binfn.to_str().unwrap(),
+                        asmfn.to_str().unwrap()
+                    ]).status().expect("Failed to run nasm, is it in yout path?");
+                    assert!(res.success(), "nasm returned an error");
 
-                // Update the JIT tables
-                self.jit_cache.as_ref().unwrap().add_mapping(
-                    VirtAddr(pc as usize), &tmp)
+                    // Read the binary
+                    let tmp = std::fs::read(&binfn)
+                        .expect("Failed to read nasm output");
+
+                    // Update the JIT tables
+                    self.jit_cache.as_ref().unwrap().add_mapping(
+                        VirtAddr(pc as usize), &tmp)
+                }
             };
 
             unsafe {
                 // Invoke the jit
                 let exit_code : u64;
                 let reentry_pc: u64;
-                let _exit_info:  u64;
+                let exit_info:  u64;
 
                 let dirty_inuse = self.memory.dirty_len();
                 let new_dirty_inuse: usize;
@@ -1020,7 +1029,7 @@ impl Emulator {
                 entry = in(reg) jit_addr,
                 out("rax")    exit_code,
                 out("rbx")    reentry_pc,
-                out("rcx")    _exit_info,
+                out("rcx")    exit_info,
                 out("rdx")    _,
                 in("r8")      memory,
                 in("r9")      perms,
@@ -1073,6 +1082,16 @@ impl Emulator {
                         let pc = VirtAddr(reentry_pc as usize);
                         if let Some(callback) = self.breakpoints.get(&pc) {
                             callback(self)?;
+                        }
+
+                        if self.reg(Register::Pc) == reentry_pc {
+                            // Force execution at the return location, which
+                            // will skip over the breakpoint return
+                            override_jit_addr = Some(exit_info as usize);
+                        } else {
+                            // PC was changed by the breakpoint handler,
+                            // thus we respect its change and will jump
+                            // to the target it specified
                         }
                     }
                     _ => unreachable!(),

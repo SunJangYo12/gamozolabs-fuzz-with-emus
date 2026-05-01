@@ -531,7 +531,6 @@ pub struct Corpus {
 }
 
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    panic!("Hit malloc bp");
     Ok(())
 }
 
