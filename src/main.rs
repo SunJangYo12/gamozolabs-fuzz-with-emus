@@ -531,6 +531,8 @@ pub struct Corpus {
 }
 
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    emu.set_reg(Register::A0, 0);
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
 
