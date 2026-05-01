@@ -119,6 +119,8 @@ impl Mmu {
         // Add some padding and alignment
         let align_size = (size + 0x1f) & !0xf;
 
+        print!("Alc {}\n", size);
+
         // Get the current allocation base
         let base = self.cur_alc;
 
