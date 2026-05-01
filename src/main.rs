@@ -420,8 +420,6 @@ struct Statistics {
 
 fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>, corpus: Arc<Corpus>) {
-    const BATCH_SIZE: usize = 10;
-
     // Create a new random number generator
     let mut rng = Rng::new();
 
@@ -431,7 +429,8 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
         let mut local_stats = Statistics::default();
 
-        for _ in 0..BATCH_SIZE {
+        let it = rdtsc();
+        while (rdtsc() - it) < 500_000_000 {
             // Reset emu to original state
             let it = rdtsc();
             emu.reset(&*original);
