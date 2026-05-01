@@ -43,6 +43,36 @@ impl Rng {
     }
 }
 
+
+// Stat structure from kernel_stat64
+#[repr(C)]
+#[derive(Default, Debug)]
+struct Stat {
+    st_dev:     u64,
+    st_ino:     u64,
+    st_mode:    u32,
+    st_nlink:   u32,
+    st_uid:     u32,
+    st_gid:     u32,
+    st_rdev:    u64,
+    __pad1:     u64,
+
+    st_size:    i64,
+    st_blksize: i64,
+    __pad2:     i32,
+
+    st_blocks:  i64,
+
+    st_atime:       u64,
+    st_atimensec:   u64,
+    st_mtime:       u64,
+    st_mtimensec:   u64,
+    st_ctime:       u64,
+    st_ctimensec:   u64,
+
+    __glibc_reservd: [i32; 2],
+}
+
 fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
@@ -239,39 +269,58 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
             }
             Ok(())
         }
+        1028 => {
+            // stat()
+            let filename = emu.reg(Register::A0) as usize;
+            let statbuf  = emu.reg(Register::A1);
+
+            // Determine the length the filename
+            let mut fnlen = 0;
+            while emu.memory.read::<u8>(VirtAddr(filename + fnlen))? != 0 {
+                fnlen += 1;
+            }
+
+            // Get the filename bytes
+            let bytes = emu.memory.peek(VirtAddr(filename),
+                fnlen, Perm(PERM_READ))?;
+
+            if bytes == b"testfn" {
+                let mut stat = Stat::default();
+                stat.st_dev = 0x803;
+                stat.st_ino = 0x81889;
+                stat.st_mode = 0x81a4;
+                stat.st_nlink = 0x1;
+                stat.st_uid = 0x3e8;
+                stat.st_gid = 0x3e8;
+                stat.st_rdev = 0x0;
+                stat.st_size = emu.fuzz_input.len() as i64;
+                stat.st_blksize = 0x1000;
+                stat.st_blocks = (emu.fuzz_input.len() as i64 + 511) / 511;
+                stat.st_atime = 0x5f0fe246;
+                stat.st_mtime = 0x5f0fe244;
+                stat.st_ctime = 0x5f0fe244;
+
+                // Cast the stat structure to raw bytes
+                let stat = unsafe {
+                    core::slice::from_raw_parts(
+                        &stat as *const Stat as *const u8,
+                        core::mem::size_of_val(&stat))
+                };
+
+                // Write in the stat data
+                emu.memory.write_from(VirtAddr(statbuf as usize), stat)?;
+                emu.set_reg(Register::A0, 0);
+            } else {
+                // Error
+                emu.set_reg(Register::A0, !0);
+            }
+
+            Ok(())
+        }
         80 => {
             // fstat()
             let fd      = emu.reg(Register::A0) as usize;
             let statbuf = emu.reg(Register::A1);
-
-            // Stat structure from kernel_stat64
-            #[repr(C)]
-            #[derive(Default, Debug)]
-            struct Stat {
-                st_dev:     u64,
-                st_ino:     u64,
-                st_mode:    u32,
-                st_nlink:   u32,
-                st_uid:     u32,
-                st_gid:     u32,
-                st_rdev:    u64,
-                __pad1:     u64,
-
-                st_size:    i64,
-                st_blksize: i64,
-                __pad2:     i32,
-
-                st_blocks:  i64,
-
-                st_atime:       u64,
-                st_atimensec:   u64,
-                st_mtime:       u64,
-                st_mtimensec:   u64,
-                st_ctime:       u64,
-                st_ctimensec:   u64,
-
-                __glibc_reservd: [i32; 2],
-            }
 
             // Check if the FD is valid
             let file = emu.files.get_file(fd);
