@@ -1072,10 +1072,12 @@ impl Emulator {
             }
 
             // Read the instruction
+            print!("Reading {:#x}\n", pc);
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
+            print!("Read {:#x}\n", pc);
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
 
