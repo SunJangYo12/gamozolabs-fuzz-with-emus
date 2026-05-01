@@ -129,6 +129,7 @@ impl Mmu {
 
         // Cannot allocate
         if base.0 >= self.memory.len() {
+            print!("Alc oom\n");
             return None
         }
 
@@ -137,6 +138,7 @@ impl Mmu {
 
         // Could not satisfy allocation without going OOM
         if self.cur_alc.0 > self.memory.len() {
+            print!("Alc oomzz\n");
             return None;
         }
 
