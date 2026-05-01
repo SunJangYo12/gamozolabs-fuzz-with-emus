@@ -77,8 +77,6 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
 
-    print!("Syscall {}\n", num);
-
     // All manual using eg. man 2 open, etc
     match num {
         214 => {
@@ -548,7 +546,7 @@ fn main() -> io::Result<()> {
     }
 
     // Create a JIT cache
-    let jit_cache = Arc::new(JitCache::new(VirtAddr(1024 * 1024)));
+    let jit_cache = Arc::new(JitCache::new(VirtAddr(16 * 1024 * 1024)));
 
     // Create an emulator using the JIT
     let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
@@ -558,8 +556,8 @@ fn main() -> io::Result<()> {
         Section {
             file_off:    0x0000000000000000,            // first LOAD
             virt_addr:   VirtAddr(0x0000000000010000),
-            file_size:   0x0000000000145938,
-            mem_size:    0x0000000000145938,
+            file_size:   0x0000000000145928,
+            mem_size:    0x0000000000145928,
             permissions: Perm(PERM_READ | PERM_EXEC),
         },
         Section {
