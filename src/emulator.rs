@@ -417,7 +417,7 @@ impl Emulator {
 
     /// Register a new breakpoint callback
     pub fn add_breakpoint(&mut self, pc: VirtAddr,
-                           callback: BreakpointCallback) {
+                           callback: BreakpointsCallback) {
         self.breakpoints.insert(pc, callback);
     }
 
@@ -1067,6 +1067,13 @@ impl Emulator {
                     6 => {
                         // Hit the instruction count timeout
                         return Err(VmExit::Timeout);
+                    }
+                    7 => {
+                        // Hit breakpoint, invoke callback
+                        let pc = VirtAddr(reentry_pc as usize);
+                        if let Some(callback) = self.breakpoints.get(&pc) {
+                            callback(self)?;
+                        }
                     }
                     _ => unreachable!(),
                 }
