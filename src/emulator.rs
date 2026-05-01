@@ -959,8 +959,12 @@ impl Emulator {
                 // Go through each instruction in the block, and accumulate an
                 // assembly string which we will assembly using `nasm` on the
                 // command line
+                print!("Generating JIT for {:#x}\n", pc);
+
                 let asm = 
                     self.generate_jit(VirtAddr(pc as usize), num_blocks, corpus)?;
+
+                print!("JIT Done for {:#x}\n", pc);
 
                 // Write out the assembly
                 let asmfn = std::env::temp_dir().join(
