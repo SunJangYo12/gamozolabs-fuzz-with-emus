@@ -77,6 +77,8 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
 
+    print!("Syscall {}\n", num);
+
     // All manual using eg. man 2 open, etc
     match num {
         214 => {
@@ -641,7 +643,7 @@ fn main() -> io::Result<()> {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
