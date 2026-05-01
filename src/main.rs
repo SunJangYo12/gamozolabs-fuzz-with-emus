@@ -560,6 +560,8 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
         Some(alc)
     }).unwrap_or(VirtAddr(0));
 
+    print!("Alc returns {:x?}\n", result);
+
     emu.set_reg(Register::A0, result.0 as u64);
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
