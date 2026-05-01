@@ -1146,7 +1146,7 @@ impl Emulator {
 
                     if (target / 4) >= num_blocks as u64 {
                         // Branch target is out of bounds
-                        return Err(VmExit::JitOob);
+                        panic!("JITOOB");
                     }
 
                     asm += &format!(r#"
@@ -1243,7 +1243,7 @@ impl Emulator {
 
                             if (target / 4) >= num_blocks as u64 {
                                 // Branch target is out of bounds
-                                return Err(VmExit::JitOob);
+                                panic!("JITOOB1Z");
                             }
 
                             asm += &format!(r#"
