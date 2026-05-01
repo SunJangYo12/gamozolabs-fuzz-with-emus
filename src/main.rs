@@ -537,7 +537,7 @@ pub struct Corpus {
 }
 
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    if let Some(alc) = emu.memory.allocate(emu.reg(Register::A0) as usize) {
+    if let Some(alc) = emu.memory.allocate(emu.reg(Register::A1) as usize) {
         emu.set_reg(Register::A0, alc.0 as u64);
     } else {
         emu.set_reg(Register::A0, 0);
@@ -548,8 +548,8 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    let nmemb = emu.reg(Register::A0) as usize;
-    let size = emu.reg(Register::A1) as usize;
+    let nmemb = emu.reg(Register::A1) as usize;
+    let size = emu.reg(Register::A2) as usize;
 
     let result = size.checked_mul(nmemb).and_then(|size| {
         let alc = emu.memory.allocate(size)?;
@@ -560,9 +560,21 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
         Some(alc)
     }).unwrap_or(VirtAddr(0));
 
-    print!("Alc returns {:x?}\n", result);
+//    print!("Alc returns {:x?}\n", result);
 
     emu.set_reg(Register::A0, result.0 as u64);
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
+    Ok(())
+}
+
+fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    let old_alc = VirtAddr(emu.reg(Register::A1) as usize);
+    let size    = emu.reg(Register::A2) as usize;
+
+    panic!("Req alc {:#x?} {} {:?}\n",
+            old_alc, size, emu.memory.get_alc(old_alc));
+
+    unreachable!();
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
@@ -617,6 +629,7 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // malloc_re hasil lifting pc
     emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // hook _calloc_r
     emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp); // hook _free_r
+    emu.add_breakpoint(VirtAddr(0xe7c80), realloc_bp); // hook realloc
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);

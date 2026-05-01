@@ -2,6 +2,7 @@
 ///! access detection
 
 use std::path::Path;
+use std::collections::BTreeMap;
 use crate::emulator::VmExit;
 use crate::primitive::Primitive;
 
@@ -60,6 +61,9 @@ pub struct Mmu {
 
     /// Current base address of the next allocation
     cur_alc: VirtAddr,
+
+    /// Map an active allocation to its size
+    active_alcs: BTreeMap<VirtAddr, usize>,
 }
 
 impl Mmu {
@@ -71,6 +75,7 @@ impl Mmu {
             dirty:        Vec::with_capacity(size / DIRTY_BLOCK_SIZE + 1),
             dirty_bitmap: vec![0u64; size / DIRTY_BLOCK_SIZE / 64 + 1],
             cur_alc:      VirtAddr(0x10000),
+            active_alcs:  BTreeMap::new(),
         }
     }
 
@@ -84,6 +89,7 @@ impl Mmu {
             dirty:        Vec::with_capacity(size / DIRTY_BLOCK_SIZE + 1),
             dirty_bitmap: vec![0u64; size / DIRTY_BLOCK_SIZE / 64 + 1],
             cur_alc:      self.cur_alc.clone(),
+            active_alcs:  self.active_alcs.clone(),
         }
     }
 
@@ -111,6 +117,10 @@ impl Mmu {
 
         // Restore allocator state
         self.cur_alc = other.cur_alc;
+
+        // Clear active allocation state
+        self.active_alcs.clear();
+        self.active_alcs.extend(other.active_alcs.iter());
     }
 
 
@@ -118,8 +128,6 @@ impl Mmu {
     pub fn allocate(&mut self, size: usize) -> Option<VirtAddr> {
         // Add some padding and alignment
         let align_size = (size + 0x1f) & !0xf;
-
-        print!("Alc {}\n", size);
 
         // Get the current allocation base
         let base = self.cur_alc;
@@ -131,7 +139,6 @@ impl Mmu {
 
         // Cannot allocate
         if base.0 >= self.memory.len() {
-            print!("Alc oom\n");
             return None
         }
 
@@ -140,14 +147,31 @@ impl Mmu {
 
         // Could not satisfy allocation without going OOM
         if self.cur_alc.0 > self.memory.len() {
-            print!("Alc oomzz\n");
             return None;
         }
 
         // Mark the memory as un-initialized and writable
         self.set_permissions(base, size, Perm(PERM_RAW | PERM_WRITE));
 
+        // Log the allocation
+        self.active_alcs.insert(base, size);
+
         Some(base)
+    }
+
+    /// Get the size of an active allocations if `base` is an active allocation
+    pub fn get_alc(&self, base: VirtAddr) -> Option<usize> {
+        self.active_alcs.get(&base).copied()
+    }
+
+    /// Free a region of memory based on the allocation from a prior
+    /// `allocate` call
+    pub fn free(&mut self, base: VirtAddr) -> Result<(), VmExit> {
+        if self.active_alcs.remove(&base).is_none() {
+            Err(VmExit::DoubleFree)
+        } else {
+            Ok(())
+        }
     }
 
     /// Apply permissions to a region of memory
