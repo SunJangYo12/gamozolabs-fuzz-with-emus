@@ -71,6 +71,9 @@ pub enum VmExit {
     /// A branch occurred to a location outside of the JIT cache region
     JitOob,
 
+    /// The instruction count limit was hit and a timeout has occurred
+    Timeout,
+
     /// An integer overflow occured during a syscall due to bad supplied
     /// arguments by the program
     SyscallIntegerOverflow,
@@ -1045,6 +1048,10 @@ impl Emulator {
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
                         return self.run_emu(instrs_execed, corpus)
+                    }
+                    6 => {
+                        // Hit the instruction count timeout
+                        return Err(VmExit::Timeout);
                     }
                     _ => unreachable!(),
                 }
