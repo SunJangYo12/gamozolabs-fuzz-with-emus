@@ -356,6 +356,9 @@ impl Files {
     }
 }
 
+/// Callback for breakpoints
+type BreakpointsCallback = fn(&mut Emulator) -> Result<(), VmExit>;
+
 /// All the state of the emulated system
 pub struct Emulator {
     /// Memory for the emulator
@@ -371,7 +374,7 @@ pub struct Emulator {
     pub files: Files,
 
     /// Breakpoint callback
-    breakpoints: BTreeMap<VirtAddr, fn(&mut Emulator)>,
+    breakpoints: BTreeMap<VirtAddr, BreakpointsCallback>,
 
     /// JIT cache, If we are using a JIT
     jit_cache: Option<Arc<JitCache>>,
@@ -410,6 +413,12 @@ impl Emulator {
     pub fn enable_jit(mut self, jit_cache: Arc<JitCache>) -> Self {
         self.jit_cache = Some(jit_cache);
         self
+    }
+
+    /// Register a new breakpoint callback
+    pub fn add_breakpoint(&mut self, pc: VirtAddr,
+                           callback: BreakpointCallback) {
+        self.breakpoints.insert(pc, callback);
     }
 
     /// Reset the state of `self` to `other`, assuming that `self`
