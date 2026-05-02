@@ -167,8 +167,11 @@ impl Mmu {
     /// Free a region memory based on the allocation from a prior
     /// `allocate` call
     pub fn free(&mut self, base: VirtAddr) -> Result<(), VmExit> {
-        if self.active_alcs.remove(&base).is_none() {
-            Err(VmExit::InvalidFree)
+        if let Some(size) = self.active_alcs.remove(&base) {
+            // Clear permissions
+            self.set_permissions(base, size, Perm(0));
+
+            Ok(())
         } else {
             Ok(())
         }
