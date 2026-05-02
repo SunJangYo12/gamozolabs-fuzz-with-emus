@@ -708,7 +708,7 @@ fn main() -> io::Result<()> {
 
         match vmexit {
             VmExit::Syscall => {
-                if emu.reg(Register::A7) == 80 {
+                if emu.reg(Register::A7) == 1038 {
                     break;
                 }
 
