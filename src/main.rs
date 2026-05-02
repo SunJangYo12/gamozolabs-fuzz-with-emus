@@ -552,10 +552,14 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 
     let result = size.checked_mul(nmemb).and_then(|size| {
         let alc = emu.memory.allocate(size)?;
+        let tmp = emu.memory.peek(alc, size, Perm(PERM_WRITE))
+            .expect("New allocation not writeable?");
+        tmp.iter_mut().for_each(|x| *x =0);
         Some(alc)
     }).unwrap_or(VirtAddr(0));
 
     emu.set_reg(Register::A0, result.0 as u64);
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
 
