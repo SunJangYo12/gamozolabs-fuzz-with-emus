@@ -546,8 +546,12 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     Ok(())
 }
 
+fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    panic!("HIT calloc");
+    Ok(())
+}
+
 fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    panic!("zz");
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
@@ -595,6 +599,7 @@ fn main() -> io::Result<()> {
     ]).expect("Failed to load test application into address space");
 
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // offset malloc_r
+    emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // offset _calloc_r
     emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp);   // offset _free_r
 
     // Set the program entry point
