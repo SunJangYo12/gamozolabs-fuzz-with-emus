@@ -536,7 +536,7 @@ pub struct Corpus {
 }
 
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    if let Some(alc) = emu.memory.allocate(emu.reg(Register::A0) as usize) {
+    if let Some(alc) = emu.memory.allocate(emu.reg(Register::A1) as usize) {
         emu.set_reg(Register::A0, alc.0 as u64);
     } else {
         emu.set_reg(Register::A0, 0);
@@ -547,8 +547,8 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    let nmemb = emu.reg(Register::A0) as usize;
-    let size  = emu.reg(Register::A1) as usize;
+    let nmemb = emu.reg(Register::A1) as usize;
+    let size  = emu.reg(Register::A2) as usize;
 
     let result = size.checked_mul(nmemb).and_then(|size| {
         let alc = emu.memory.allocate(size)?;
@@ -561,6 +561,10 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     emu.set_reg(Register::A0, result.0 as u64);
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
+}
+
+fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    panic!("realloc hit");
 }
 
 fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
@@ -613,6 +617,7 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // offset malloc_r
     emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // offset _calloc_r
     emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp);   // offset _free_r
+    emu.add_breakpoint(VirtAddr(0xe7c94), realloc_bp);// offset _realloc_r
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);
