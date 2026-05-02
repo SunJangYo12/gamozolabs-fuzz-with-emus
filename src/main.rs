@@ -554,7 +554,7 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
         let alc = emu.memory.allocate(size)?;
         let tmp = emu.memory.peek(alc, size, Perm(PERM_WRITE))
             .expect("New allocation not writeable?");
-        tmp.iter_mut().for_each(|x| *x =0);
+        tmp.iter_mut().for_each(|x| *x = 0);
         Some(alc)
     }).unwrap_or(VirtAddr(0));
 
@@ -564,7 +564,10 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    panic!("realloc() hit");
+    // ini belum ter HIT, jadi gak tau berfungsi atau gak
+    emu.set_reg(Register::A0, 0);
+    emu.set_reg(Register::Pc, emu.reg(Register:Ra));
+    Ok(())
 }
 
 fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
@@ -617,7 +620,7 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // offset malloc_r
     emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // offset _calloc_r
     emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp);   // offset _free_r
-    //emu.add_breakpoint(VirtAddr(0xe7c94), realloc_bp);// offset _realloc_r
+    emu.add_breakpoint(VirtAddr(0xe7c94), realloc_bp);// offset _realloc_r
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);

@@ -273,7 +273,7 @@ impl Mmu {
                     return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
                 }
             }
-            if (perm.0 & PERM_RAW) != 0 && (perm.0 & PERM_RAW) != 0 {
+            if (exp_perms.0 & PERM_WRITE) != 0 && (perm.0 & PERM_RAW) != 0 {
                 has_raw = true;
             }
         }
