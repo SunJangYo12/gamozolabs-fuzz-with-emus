@@ -564,8 +564,13 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    // ini belum ter HIT, jadi gak tau berfungsi atau gak
-    emu.set_reg(Register::A0, 0);
+    let old_alc = VirtAddr(emu.reg(Register::A1) as usize);
+    let size    = emu.reg(Register::A2) as usize;
+
+    panic!("Reg alc {:#x?} {} {:?}\n",
+            old_alc, size, emu.memory.get_alc(old_alc));
+
+    unreachable!();
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
