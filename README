@@ -18,3 +18,8 @@ JIT exited with 1 0xc07e8
 ...
 => 0x23232323
 ...
+
+# copy input
+cd inputs
+find /usr/bin | xargs -i file {} | grep ELF | cut -f 1 -d ':' | xargs -i cp {} .
+
