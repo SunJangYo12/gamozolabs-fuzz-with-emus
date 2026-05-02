@@ -576,6 +576,11 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    let base = VirtAddr(emu.reg(Register::A1) as usize);
+    if base != VirtAddr(0) {
+        emu.memory.free(base)?;
+    }
+
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
