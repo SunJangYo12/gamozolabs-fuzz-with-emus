@@ -547,7 +547,15 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    panic!("HIT calloc");
+    let nmemb = emu.reg(Register::A0) as usize;
+    let size  = emu.reg(Register::A1) as usize;
+
+    let result = size.checked_mul(nmemb).and_then(|size| {
+        let alc = emu.memory.allocate(size)?;
+        Some(alc)
+    }).unwrap_or(VirtAddr(0));
+
+    emu.set_reg(Register::A0, result.0 as u64);
     Ok(())
 }
 

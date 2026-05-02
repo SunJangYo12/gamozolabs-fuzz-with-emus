@@ -248,17 +248,18 @@ impl Mmu {
     }        
 
 
-    /// Return an immutable slice to memory at `addr` for `size` bytes
+    /// Return a mutable slice to memory at `addr` for `size` bytes
     /// that has been validated to match all `exp_perms`
-    pub fn peek(&self, addr: VirtAddr, size: usize,
-                            exp_perms: Perm) -> Result<&[u8], VmExit> {
+    pub fn peek(&mut self, addr: VirtAddr, size: usize,
+                            exp_perms: Perm) -> Result<&mut [u8], VmExit> {
         let perms =
-            self.permissions.get(addr.0..addr.0.checked_add(size)
+            self.permissions.get_mut(addr.0..addr.0.checked_add(size)
                 .ok_or(VmExit::AddressIntegerOverflow)?)
                 .ok_or(VmExit::AddressMiss(addr, size))?;
 
         // Check permissions
-        for (idx, &perm) in perms.iter().enumerate() {
+        let mut has_raw = false;
+        for (idx, perm) in perms.iter_mut().enumerate() {
             if (perm.0 & exp_perms.0) != exp_perms.0 {
                 if exp_perms.0 == PERM_READ && (perm.0 & PERM_RAW) != 0 {
                     // If we were attempting a normal read, and the readable
@@ -266,14 +267,31 @@ impl Mmu {
                     // it as an uninitialized memory access rether than a
                     // read access
                     return Err(VmExit::UninitFault(VirtAddr(addr.0 + idx)));
+                } else if exp_perms.0 == PERM_WRITE {
+                    return Err(VmExit::WriteFault(VirtAddr(addr.0 + idx)));
                 } else {
                     return Err(VmExit::ReadFault(VirtAddr(addr.0 + idx)));
+                }
+            }
+            if (perm.0 & PERM_RAW) != 0 && (perm.0 & PERM_RAW) != 0 {
+                has_raw = true;
+            }
+        }
+
+        if has_raw {
+            for perm in perms.iter_mut() {
+                // Check if we're getting write access
+                if (exp_perms.0 & PERM_WRITE) != 0 {
+                    // Propagate RAW
+                    if (perm.0 & PERM_RAW) != 0 {
+                        perm.0 |= PERM_READ;
+                    }
                 }
             }
         }
 
         // Return a slice to the memory
-        Ok(&self.memory[addr.0..addr.0 + size])
+        Ok(&mut self.memory[addr.0..addr.0 + size])
     }
 
     /// Read the memory at `addr` into `buf`
