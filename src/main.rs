@@ -81,11 +81,14 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     match num {
         214 => {
             // brk()
+            let req_base = emu.reg(Register::A0);
+
+            if req_base == 0 {
+                emu.set_reg(Register::A0, 0);
+                return Ok(());
+            }
             panic!("Not expecting brk");
 /*
-            let req_base = emu.reg(Register::A0);
-            let cur_base = emu.memory.allocate(0).unwrap();
-
             let increment = if req_base != 0 {
                 (req_base as i64).checked_sub(cur_base.0 as i64)
                     .ok_or(VmExit::SyscallIntegerOverflow)?
