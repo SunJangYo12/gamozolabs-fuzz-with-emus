@@ -75,8 +75,11 @@ pub enum VmExit {
     /// The instruction count limit was hit and a timeout has occurred
     Timeout,
 
+    /// An invald opcode was lifted
+    InvalidOpcode,
+
     /// A free of an invalid region was performed
-    InvalidFree,
+    InvalidFree(VirtAddr),
 
     /// An integer overflow occured during a syscall due to bad supplied
     /// arguments by the program
@@ -107,6 +110,13 @@ pub enum VmExit {
 pub enum FaultType {
     // Access occured outside of program memory
     Bounds,
+
+    // Invalid free (eg, double free or corrput free address)
+    Free,
+
+    // An invalid opcode was executed (or lifted)
+    InvalidOpcode,
+
     Exec,
     Read,
     Write,
@@ -145,6 +155,9 @@ impl VmExit {
             VmExit::ExecFault(addr)      => Some((FaultType::Exec,  addr)),
             VmExit::UninitFault(addr)    => Some((FaultType::Uninit, addr)),
             VmExit::WriteFault(addr)     => Some((FaultType::Write, addr)),
+            VmExit::InvalidFree(addr)    => Some((FaultType::Free, addr)),
+            VmExit::InvalidOpcode        =>
+                Some((FaultType::InvalidOpcode, VirtAddr(0))),
             _ => None,
         }
     }
@@ -1097,6 +1110,10 @@ impl Emulator {
                             // to the target it specified
                         }
                     }
+                    8 => {
+                        // An invalid opcode was executed
+                        return Err(VmExit::InvalidOpcode);
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -1922,7 +1939,14 @@ impl Emulator {
                         _ => unreachable!(),
                     }
                 }
-                _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
+                _ => {
+                    asm += &format!(r#"
+                        mov rax, 8
+                        mov rbx, {pc}
+                        add r15, {block_instrs}
+                        ret
+                    "#, pc = pc, block_instrs = block_instrs);
+                }
             }
 
             pc += 4;

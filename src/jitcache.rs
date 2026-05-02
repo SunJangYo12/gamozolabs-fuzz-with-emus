@@ -77,6 +77,7 @@ pub struct JitCache {
 // 5 - Write fualt, rcx = guest faulting address
 // 6 - Instruction timeout
 // 7 - Breakpoint, rcx = reentry point
+// 8 - Invalid opcode
 
 impl JitCache {
     /// Allocates a new `JitCache` which is capable of handling up to

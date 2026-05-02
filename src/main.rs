@@ -573,7 +573,7 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
         0
     } else {
         // Attempt to get the old allocation size
-        emu.memory.get_alc(old_alc).ok_or(VmExit::InvalidFree)?
+        emu.memory.get_alc(old_alc).ok_or(VmExit::InvalidFree(old_alc))?
     };
 
     // Compute the size to copy
@@ -588,7 +588,7 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
                     // Copy the memory only if we could read it from the old
                     // allocation. This will preserve the uninitialized state
                     // of byte which haven't been initialized in the old allocation
-                    emu.memory.write(VirtAddr(new_alc.0 + ii), old);
+                    emu.memory.write(VirtAddr(new_alc.0 + ii), old).unwrap();
                 }
             }
             // Free the old allocation
