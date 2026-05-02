@@ -567,17 +567,33 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     let old_alc = VirtAddr(emu.reg(Register::A1) as usize);
     let size    = emu.reg(Register::A2) as usize;
 
+    // Get the old allocation size
     let old_size = if old_alc == VirtAddr(0) {
         // No previous allocation spectfied, thus no size
         0
     } else {
-        emu.memory.get_alc(old_alc)?;
+        // Attempt to get the old allocation size
+        emu.memory.get_alc(old_alc).ok_or(VmExit::InvalidFree)?
     };
 
-    panic!("Reg alc {:#x?} {} {:?}\n",
-            old_alc, size, emu.memory.get_alc(old_alc));
+    // Compute the size to copy
+    let to_copy = core::cmp::min(size, old_size);
 
-    unreachable!();
+    // Allocate the new memory
+    let new_alc = emu.memory.allocate(size).and_then(|new_alc| {
+        // Copy memory
+        for ii in 0..to_copy {
+            let old: u8 = emu.memory.read(VirtAddr(old_alc.0 + ii)).unwrap();
+            emu.memory.write(VirtAddr(new_alc.0 + ii), old);
+        }
+
+        // Free the old allocation
+        emu.memory.free(old_alc).expect("Failed to free old allocation?");
+
+        Some(new_alc)
+    }).unwrap_or(VirtAddr(0));
+
+    emu.set_reg(Register::A0, new_alc.0 as u64);    
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
