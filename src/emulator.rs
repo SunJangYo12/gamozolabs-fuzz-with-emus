@@ -75,7 +75,8 @@ pub enum VmExit {
     /// The instruction count limit was hit and a timeout has occurred
     Timeout,
 
-    DoubleFree,
+    /// A free of an invalid region was performed
+    InvalidFree,
 
     /// An integer overflow occured during a syscall due to bad supplied
     /// arguments by the program

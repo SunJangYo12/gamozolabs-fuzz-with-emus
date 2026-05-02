@@ -168,7 +168,7 @@ impl Mmu {
     /// `allocate` call
     pub fn free(&mut self, base: VirtAddr) -> Result<(), VmExit> {
         if self.active_alcs.remove(&base).is_none() {
-            Err(VmExit::DoubleFree)
+            Err(VmExit:InvalidFree)
         } else {
             Ok(())
         }

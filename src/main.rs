@@ -567,6 +567,13 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     let old_alc = VirtAddr(emu.reg(Register::A1) as usize);
     let size    = emu.reg(Register::A2) as usize;
 
+    let old_size = if old_alc == VirtAddr(0) {
+        // No previous allocation spectfied, thus no size
+        0
+    } else {
+        emu.memory.get_alc(old_alc)?;
+    };
+
     panic!("Reg alc {:#x?} {} {:?}\n",
             old_alc, size, emu.memory.get_alc(old_alc));
 
