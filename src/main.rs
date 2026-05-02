@@ -700,7 +700,6 @@ fn main() -> io::Result<()> {
     push!(progname.0); // Argv
     push!(3u64); // Argc
 
-/*
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
@@ -709,7 +708,7 @@ fn main() -> io::Result<()> {
 
         match vmexit {
             VmExit::Syscall => {
-                if emu.reg(Register::A7) == 1024 {
+                if emu.reg(Register::A7) == 80 {
                     break;
                 }
 
@@ -724,7 +723,7 @@ fn main() -> io::Result<()> {
             _ => break,
         }
     }
-*/
+
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
 
