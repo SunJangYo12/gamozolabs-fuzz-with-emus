@@ -127,6 +127,8 @@ impl Mmu {
             return Some(base);
         }
 
+        print!("Alc {}\n", size);
+
         // Cannot allocate
         if base.0 >= self.memory.len() {
             print!("Alc oom\n");
