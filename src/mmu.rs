@@ -159,6 +159,11 @@ impl Mmu {
         Some(base)
     }
 
+    /// Get the size of an active allocation if `base` is an active allocation
+    pub fn get_alc(&self, base: VirtAddr) -> Option<usize> {
+        self.active_alcs.get(&base).copied()
+    }
+
     /// Free a region memory based on the allocation from a prior
     /// `allocate` call
     pub fn free(&mut self, base: VirtAddr) -> Result<(), VmExit> {
