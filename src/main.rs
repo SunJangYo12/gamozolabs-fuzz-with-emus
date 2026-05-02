@@ -583,8 +583,12 @@ fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     let new_alc = emu.memory.allocate(size).and_then(|new_alc| {
         // Copy memory
         for ii in 0..to_copy {
-            let old: u8 = emu.memory.read(VirtAddr(old_alc.0 + ii)).unwrap();
-            emu.memory.write(VirtAddr(new_alc.0 + ii), old);
+            if let Ok(old) = emu.memory.read::<u8>(VirtAddr(old_alc.0 + ii)) {
+                // Copy the memory only if we could read it from the old
+                // allocation. This will preserve the uninitialized state
+                // of byte which haven't been initialized in the old allocation
+                emu.memory.write(VirtAddr(new_alc.0 + ii), old);
+            }
         }
 
         // Free the old allocation
