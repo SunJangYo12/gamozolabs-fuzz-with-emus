@@ -703,7 +703,7 @@ fn main() -> io::Result<()> {
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
-        let vmexit = emu.run_emu(&mut tmp, &*corpus)
+        let vmexit = emu.run(&mut tmp, &*corpus)
             .expect_err("Failed to execute emulator");
 
         match vmexit {
@@ -723,6 +723,8 @@ fn main() -> io::Result<()> {
             _ => break,
         }
     }
+
+    print!("Took snapshot\n");
 
     // Wrap the original emulator in an `Arc`
     let emu = Arc::new(emu);
