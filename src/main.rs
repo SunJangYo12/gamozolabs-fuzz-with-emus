@@ -564,7 +564,7 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
-    panic!("realloc hit");
+    panic!("realloc() hit");
 }
 
 fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
@@ -617,7 +617,7 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // offset malloc_r
     emu.add_breakpoint(VirtAddr(0xe27cc), calloc_bp); // offset _calloc_r
     emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp);   // offset _free_r
-    emu.add_breakpoint(VirtAddr(0xe7c94), realloc_bp);// offset _realloc_r
+    //emu.add_breakpoint(VirtAddr(0xe7c94), realloc_bp);// offset _realloc_r
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);
@@ -634,7 +634,7 @@ fn main() -> io::Result<()> {
         .expect("Failed to write program name");
     let arg1 = emu.memory.allocate(4096)
         .expect("Failed to allocated arg1");
-    emu.memory.write_from(arg1, b"-x\0")
+    emu.memory.write_from(arg1, b"-g\0")
         .expect("Failed to write arg1");
     let arg2 = emu.memory.allocate(4096)
         .expect("Failed to allocated arg2");
