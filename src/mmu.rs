@@ -116,6 +116,9 @@ impl Mmu {
 
     /// Allocate a region of memory as RW in the address space
     pub fn allocate(&mut self, size: usize) -> Option<VirtAddr> {
+        // Add some padding and alignment
+        let align_size = (size + 0xfff) & !0xf;
+
         // Get the current allocation base
         let base = self.cur_alc;
 
@@ -130,7 +133,7 @@ impl Mmu {
         }
 
         // Update the allocation size
-        self.cur_alc = VirtAddr(self.cur_alc.0.checked_add(size)?);
+        self.cur_alc = VirtAddr(self.cur_alc.0.checked_add(align_size)?);
 
         // Could not satisfy allocation without going OOM
         if self.cur_alc.0 > self.memory.len() {
