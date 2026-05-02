@@ -546,6 +546,12 @@ fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     Ok(())
 }
 
+fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    panic!("zz");
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
+    Ok(())
+}
+
 fn main() -> io::Result<()> {
     std::fs::create_dir_all("inputs")?;
     std::fs::create_dir_all("crashes")?;
@@ -589,6 +595,7 @@ fn main() -> io::Result<()> {
     ]).expect("Failed to load test application into address space");
 
     emu.add_breakpoint(VirtAddr(0xe58b0), malloc_bp); // offset malloc_r
+    emu.add_breakpoint(VirtAddr(0xe3c7c), free_bp);   // offset _free_r
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x1092c);
