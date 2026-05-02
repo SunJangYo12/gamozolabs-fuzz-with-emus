@@ -566,7 +566,7 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     // ini belum ter HIT, jadi gak tau berfungsi atau gak
     emu.set_reg(Register::A0, 0);
-    emu.set_reg(Register::Pc, emu.reg(Register:Ra));
+    emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
 
