@@ -510,7 +510,7 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
-            print!("{}\n", self);
+            print!("Lifting {:#x}\n", pc);
 
             if let Some(callback) =
                     self.breakpoints.get(&VirtAddr(pc as usize)) {
