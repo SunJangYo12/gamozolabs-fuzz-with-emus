@@ -1137,6 +1137,8 @@ impl Emulator {
             -> Result<String, VmExit> {
         let mut asm = "[bits 64]\n".to_string();
 
+        print!("Jit request for {:#x}\n", pc.0);
+
         // First in the block, check for an instruction timeout
         asm += &format!(r#"
             cmp r15, 10000000
