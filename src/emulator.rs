@@ -510,6 +510,17 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
+            if let Some(callback) =
+                    self.breakpoints.get(&VirtAddr(pc as usize)) {
+                // Invoke the breakpoint callback
+                callback(self)?;
+
+                if self.reg(Register::Pc) != pc {
+                    // Callback changed PC, re-start emulation loop
+                    continue 'next_inst;
+                }
+            }
+
             // Update number of instructions executed
             *instrs_execed += 1;
 
