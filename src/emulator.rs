@@ -510,8 +510,6 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
-            print!("Lifting {:#x}\n", pc);
-
             if let Some(callback) =
                     self.breakpoints.get(&VirtAddr(pc as usize)) {
                 // Invoke the breakpoint callback
@@ -1170,6 +1168,8 @@ impl Emulator {
 
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
+
+            print!("Lifting {:#x}\n", pc);
 
             // Insert breakpoint if needed
             if self.breakpoints.contains_key(&VirtAddr(pc as usize)) {
