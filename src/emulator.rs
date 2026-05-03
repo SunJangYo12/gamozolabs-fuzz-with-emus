@@ -1967,6 +1967,7 @@ impl Emulator {
             pc += 4;
         }
 
+        print!("{}\n", asm);
         Ok(asm)
     }
 }
