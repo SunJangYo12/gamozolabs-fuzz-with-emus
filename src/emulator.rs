@@ -510,6 +510,8 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
+            print!("{}\n", self);
+
             if let Some(callback) =
                     self.breakpoints.get(&VirtAddr(pc as usize)) {
                 // Invoke the breakpoint callback
