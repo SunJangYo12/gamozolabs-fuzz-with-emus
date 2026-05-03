@@ -1137,8 +1137,6 @@ impl Emulator {
             -> Result<String, VmExit> {
         let mut asm = "[bits 64]\n".to_string();
 
-        print!("Jit request for {:#x}\n", pc.0);
-
         // First in the block, check for an instruction timeout
         asm += &format!(r#"
             cmp r15, 10000000
@@ -1170,8 +1168,6 @@ impl Emulator {
 
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
-
-            print!("Lifting {:#x}\n", pc);
 
             // Insert breakpoint if needed
             if self.breakpoints.contains_key(&VirtAddr(pc as usize)) {
@@ -1286,11 +1282,12 @@ impl Emulator {
                             let ret = pc.wrapping_add(4);
 
                             asm += &format!(r#"
-                                mov  rax, {ret}
-                                {store_rd_from_rax}
-
                                 {load_rax_from_rs1}
                                 add  rax, {imm}
+                                mov  rdx, rax
+
+                                mov rbx, {ret}
+                                {store_rd_from_rbx}
 
                                 shr  rax, 2
                                 cmp  rax, {num_blocks}
@@ -1300,20 +1297,19 @@ impl Emulator {
                                 test rax, rax
                                 jz   .jit_resolve
 
+                                add r15, {block_instrs}
                                 jmp rax
 
                                 .jit_resolve:
-                                {load_rbx_from_rs1}
-                                add  rbx, {imm}
+                                mov  rbx, rdx
                                 mov  rax, 1
                                 add  r15, {block_instrs}
                                 ret
 
                             "#, imm = inst.imm,
                                 ret = ret,
-                                store_rd_from_rax = store_reg!(inst.rd, "rax"),
+                                store_rd_from_rbx = store_reg!(inst.rd, "rbx"),
                                 load_rax_from_rs1 = load_reg!("rax", inst.rs1),
-                                load_rbx_from_rs1 = load_reg!("rbx", inst.rs1),
                                 block_instrs = block_instrs,
                                 num_blocks = num_blocks);
 
@@ -1967,7 +1963,6 @@ impl Emulator {
             pc += 4;
         }
 
-        print!("{}\n", asm);
         Ok(asm)
     }
 }
