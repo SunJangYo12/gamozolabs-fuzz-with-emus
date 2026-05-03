@@ -634,7 +634,7 @@ fn main() -> io::Result<()> {
     let jit_cache = Arc::new(JitCache::new(VirtAddr(16 * 1024 * 1024)));
 
     // Create an emulator using the JIT
-    let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
+    let mut emu = Emulator::new(32 * 1024 * 1024);//.enable_jit(jit_cache); //32MB
 
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
@@ -699,7 +699,7 @@ fn main() -> io::Result<()> {
     push!(arg1.0); // Argv
     push!(progname.0); // Argv
     push!(3u64); // Argc
-
+/*
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
@@ -723,7 +723,7 @@ fn main() -> io::Result<()> {
             _ => break,
         }
     }
-
+*/
     print!("Took snapshot\n");
 
     // Wrap the original emulator in an `Arc`
@@ -732,7 +732,7 @@ fn main() -> io::Result<()> {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();
