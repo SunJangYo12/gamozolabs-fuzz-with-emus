@@ -18,7 +18,7 @@ use atomicvec::AtomicVec;
 use aht::Aht;
 
 /// If `true` the guest writes to stdout and stderr will be printed to our
-/// own stdout and stderr
+/// own stdout and stderr.
 const VERBOSE_GUEST_PRINTS: bool = false;
 
 fn rdtsc() -> u64 {
