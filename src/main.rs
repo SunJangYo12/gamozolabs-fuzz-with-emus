@@ -732,6 +732,53 @@ fn main() -> io::Result<()> {
     // Create a new stats structure
     let stats = Arc::new(Mutex::new(Statistics::default()));
 
+    // Create the stats thread
+    {
+        let corpus = corpus.clone();
+        let stats = stats.clone();
+        std::thread::spawn(move || {
+            // Start a timer
+            let start = Instant::now();
+
+            // Save the time stamp of start of execution
+            let _start_cycles = rdtsc();
+
+            let mut last_time = Instant::now();
+            let mut log = File::create("stats.txt").unwrap();
+            loop {
+                std::thread::sleep(Duration::from_millis(10));
+
+                // Get access to the stats structure
+                let stats = stats.lock().unwrap();
+                let elapsed = start.elapsed().as_secs_f64();
+
+                write!(log, "{:.6},{},{},{}\n", elapsed, stats.fuzz_cases,
+                        corpus.code_coverage.len(), corpus.unique_crashes.len())
+                        .unwrap();
+
+                if last_time.elapsed() >= Duration::from_millis(1000) {
+                    let fuzz_cases = stats.fuzz_cases;
+                    let instrs = stats.instrs_execed;
+
+                    // Compute perfomace numbers
+                    let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
+                    let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
+
+                    print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
+                                fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
+                                reset {:8.4} | vm {:8.4}\n",
+                        elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
+                        fuzz_cases as f64 / elapsed,
+                        corpus.code_coverage.len(),
+                        instrs as f64 / elapsed / 1_000_000.,
+                        resetc, vmc);
+
+                    last_time   = Instant::now();
+                }
+            }
+        });
+    }
+
     for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
@@ -743,50 +790,8 @@ fn main() -> io::Result<()> {
         });
     }
 
-    // Start a timer
-    let start = Instant::now();
-
-    // Save the time stamp of start of execution
-    let _start_cycles = rdtsc();
-
-    let mut last_cases = 0;
-    let mut last_instrs = 0;
-    let mut last_time = Instant::now();
-
-    let mut log = File::create("stats.txt")?;
     loop {
-        std::thread::sleep(Duration::from_millis(10));
-
-        // Get access to the stats structure
-        let stats = stats.lock().unwrap();
-        let elapsed = start.elapsed().as_secs_f64();
-
-        write!(log, "{:.6},{},{},{}\n", elapsed, stats.fuzz_cases,
-                corpus.code_coverage.len(), corpus.unique_crashes.len())?;
-
-        if last_time.elapsed() >= Duration::from_millis(1000) {
-            let time_delta = last_time.elapsed().as_secs_f64();
-
-            let fuzz_cases = stats.fuzz_cases;
-            let instrs = stats.instrs_execed;
-
-            // Compute perfomace numbers
-            let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
-            let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
-
-            print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
-                        fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
-                        reset {:8.4} | vm {:8.4}\n",
-                elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
-                (fuzz_cases - last_cases) as f64 / time_delta,
-                corpus.code_coverage.len(),
-                (instrs - last_instrs) as f64 / time_delta / 1_000_000.,
-                resetc, vmc);
-
-            last_cases = fuzz_cases;
-            last_instrs = instrs;
-            last_time   = Instant::now();
-        }
+        std::thread::sleep(Duration::from_millis(5000));
     }
 }
 
