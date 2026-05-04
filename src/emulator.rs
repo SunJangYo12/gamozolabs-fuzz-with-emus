@@ -10,6 +10,8 @@ use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 use crate::Corpus;
 
+const ENABLE_TRACKING: bool = false;
+
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(usize)]
@@ -491,8 +493,8 @@ impl Emulator {
             self.run_jit(instrs_execed, vm_cycles, corpus)
         } else {
             let it = rdtsc();
-            self.run_emu(instrs_execed, corpus);
-            *vm_cycles += rdtsc() - it();
+            let ret = self.run_emu(instrs_execed, corpus);
+            *vm_cycles += rdtsc() - it;
             ret
         }
     }
@@ -1177,27 +1179,6 @@ impl Emulator {
             // Add a label to this instruction
             asm += &format!("inst_pc_{:#x}:\n", pc);
 
-            // Insert breakpoint if needed
-            if self.breakpoints.contains_key(&VirtAddr(pc as usize)) {
-                asm += &format!(r#"
-                    lea rcx, [rel .after_bp]
-                    mov rax, 7
-                    mov rbx, {pc}
-                    ret
-
-                    .after_bp:
-                "#, pc = pc);
-            }
-
-            // Update code coverage
-            corpus.code_coverage.entry_or_insert(
-                &VirtAddr(pc as usize), pc as usize, || {
-                    corpus.inputs.push(Box::new(self.fuzz_input.clone()));
-                    Box::new(())
-            });
-
-            // Track number of instructions in the block
-            block_instrs += 1;
 
             // Produce the assembly statement to load RISCV-V `reg` into `x86reg`
             macro_rules! load_reg {
@@ -1222,6 +1203,55 @@ impl Emulator {
                     }
                 }
             }
+
+            // Save the register state to the trace
+            if ENABLE_TRACKING {
+                asm += &format!(r#"
+                    mov rax, {pc}
+                    {store_pc_from_rax}
+
+                    mov rax, [rsi + 0x08]
+                    cmp rax, [rsi + 0x10]
+                    jb  .has_room_for_trace
+
+                    int3
+
+                    .has_room_for_trace:
+                    push rsi
+                    imul rdi, [rsi + 0x08], 33 * 8
+                    add  rdi, [rsi + 0x00]
+                    mov  rsi, r13
+                    mov  rcx, 33
+                    rep  movsq
+                    pop  rsi
+
+                    inc qword [rsi + 0x08]
+                "#, store_pc_from_rax = store_reg!(Register::Pc, "rax"),
+                    pc = pc);
+            }
+
+            // Insert breakpoint if needed
+            if self.breakpoints.contains_key(&VirtAddr(pc as usize)) {
+                asm += &format!(r#"
+                    lea rcx, [rel .after_bp]
+                    mov rax, 7
+                    mov rbx, {pc}
+                    ret
+
+                    .after_bp:
+                "#, pc = pc);
+            }
+
+            // Update code coverage
+            corpus.code_coverage.entry_or_insert(
+                &VirtAddr(pc as usize), pc as usize, || {
+                    corpus.inputs.push(Box::new(self.fuzz_input.clone()));
+                    Box::new(())
+            });
+
+            // Track number of instructions in the block
+            block_instrs += 1;
+
             match opcode {
                 0b0110111 => {
                     // LUI
