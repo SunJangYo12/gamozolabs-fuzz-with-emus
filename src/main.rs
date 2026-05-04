@@ -462,9 +462,10 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
 
             let vmexit = loop {
                 let it = rdtsc();
-                let vmexit = emu.run(&mut run_instrs, &*corpus)
+                let vmexit = emu.run(&mut run_instrs,
+                                     &mut local_stats.vm_cycles,
+                                     &*corpus)
                     .expect_err("Failed to execute emulator");
-                local_stats.vm_cycles += rdtsc() - it;
 
                 match vmexit {
                     VmExit::Syscall => {

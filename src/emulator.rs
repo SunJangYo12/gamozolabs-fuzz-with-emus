@@ -4,6 +4,7 @@ use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
 use std::collections::BTreeMap;
+use crate::rdtsc;
 use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
@@ -483,17 +484,19 @@ impl Emulator {
     }
 
     // Run the VM using either the emulator or the JIT
-    pub fn run(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+    pub fn run(&mut self, instrs_execed: &mut u64,
+                vm_cycles: &mut u64, corpus: &Corpus)
             -> Result<(), VmExit> {
         if self.jit_cache.is_some() {
-            self.run_jit(instrs_execed, corpus)
+            self.run_jit(instrs_execed, vm_cycles, corpus)
         } else {
-            self.run_emu(instrs_execed, corpus)
+            self.run_emu(instrs_execed, vm_cycles, corpus)
         }
     }
 
     // Run the VM using the emulator
-    pub fn run_emu(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+    pub fn run_emu(&mut self, instrs_execed: &mut u64,
+                   vm_cycles: &mut u64, corpus: &Corpus)
             -> Result<(), VmExit> {
         'next_inst: loop {
             // Get the current program counter
@@ -979,7 +982,8 @@ impl Emulator {
     }
 
     /// Run the VM using the JIT
-    pub fn run_jit(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
+    pub fn run_jit(&mut self, instrs_execed: &mut u64,
+                    vm_cycles: &mut u64, corpus: &Corpus)
             -> Result<(), VmExit> {
         // Get the JIT address
         let (memory, perms, dirty, dirty_bitmap) = self.memory.jit_addrs();
@@ -1050,6 +1054,7 @@ impl Emulator {
                 let new_dirty_inuse: usize;
                 let mut instcount = *instrs_execed;
 
+                let it = rdtsc();
                 asm!(r#"
                     call {entry}
                 "#,
@@ -1067,6 +1072,7 @@ impl Emulator {
                 in("r14")     trans_table,
                 inout("r15")  instcount,
                 );
+                *vm_cycles += rdtsc() - it;
 
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, reentry_pc);
@@ -1091,14 +1097,14 @@ impl Emulator {
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed, corpus);
+                        return self.run_emu(instrs_execed, vm_cycles, corpus);
                     }
                     5 => {
                         // Write fault
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed, corpus)
+                        return self.run_emu(instrs_execed, vm_cycles, corpus)
                     }
                     6 => {
                         // Hit the instruction count timeout
