@@ -780,7 +780,7 @@ fn main() -> io::Result<()> {
         });
     }
 
-    for _ in 0..1 { //2 thread
+    for _ in 0..2 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();

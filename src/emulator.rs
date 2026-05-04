@@ -490,13 +490,15 @@ impl Emulator {
         if self.jit_cache.is_some() {
             self.run_jit(instrs_execed, vm_cycles, corpus)
         } else {
-            self.run_emu(instrs_execed, vm_cycles, corpus)
+            let it = rdtsc();
+            self.run_emu(instrs_execed, corpus);
+            *vm_cycles += rdtsc() - it();
+            ret
         }
     }
 
     // Run the VM using the emulator
-    pub fn run_emu(&mut self, instrs_execed: &mut u64,
-                   vm_cycles: &mut u64, corpus: &Corpus)
+    pub fn run_emu(&mut self, instrs_execed: &mut u64, corpus: &Corpus)
             -> Result<(), VmExit> {
         'next_inst: loop {
             // Get the current program counter
@@ -1097,14 +1099,14 @@ impl Emulator {
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed, vm_cycles, corpus);
+                        return self.run_emu(instrs_execed, corpus);
                     }
                     5 => {
                         // Write fault
                         // The JIT reports the address of the base of the
                         // access, invoke the emulator to get the specific
                         // byte which caused the fault
-                        return self.run_emu(instrs_execed, vm_cycles, corpus)
+                        return self.run_emu(instrs_execed, corpus)
                     }
                     6 => {
                         // Hit the instruction count timeout
