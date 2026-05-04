@@ -10,7 +10,9 @@ use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 use crate::Corpus;
 
-const ENABLE_TRACKING: bool = false;
+/// If set, all register state will be saved before the exection of every
+/// instruction. This is INCREDIBLY slow and should only be used for debugging
+const ENABLE_TRACING: bool = true;
 
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -397,6 +399,10 @@ pub struct Emulator {
 
     /// JIT cache, If we are using a JIT
     jit_cache: Option<Arc<JitCache>>,
+
+    /// Trace of register states prior to every instruction execution
+    /// only allocated if `ENABLE_TRACING` is `true`
+    trace: Vec<[u64; 33]>,
 }
 
 impl Emulator {
@@ -413,6 +419,8 @@ impl Emulator {
             ]),
             jit_cache: None,
             breakpoints: BTreeMap::new(),
+            trace: Vec::with_capacity(
+                if ENABLE_TRACING { 10_000_000 } else { 0 }),
         }
     }
 
@@ -425,6 +433,8 @@ impl Emulator {
             files:       self.files.clone(),
             jit_cache:   self.jit_cache.clone(),
             breakpoints: self.breakpoints.clone(),
+            trace: Vec::with_capacity(
+                if ENABLE_TRACING { 10_000_000 } else { 0 }),
         }
     }
 
@@ -443,6 +453,25 @@ impl Emulator {
     /// Reset the state of `self` to `other`, assuming that `self`
     /// is forked off of `other`. If it is not, the results are invalid.
     pub fn reset(&mut self, other: &Self) {
+        if ENABLE_TRACING {
+            let mut tracestr = String::new();
+            let mut pctracestr = String::new();
+            for trace in &self.trace {
+                self.registers = *trace;
+
+                tracestr += &format!("{}\n", self);
+                pctracestr += &format!("{:x}\n", self.reg(Register::Pc));
+            }
+            if self.trace.len() > 0 {
+                std::fs::write("trace.txt", tracestr);
+                std::fs::write("pctrace.txt", pctracestr);
+                panic!();
+            }
+
+            // Reset trace state
+            self.trace.clear();
+        }
+
         // Reset memory state
         self.memory.reset(&other.memory);
 
@@ -1205,7 +1234,7 @@ impl Emulator {
             }
 
             // Save the register state to the trace
-            if ENABLE_TRACKING {
+            if ENABLE_TRACING {
                 asm += &format!(r#"
                     mov rax, {pc}
                     {store_pc_from_rax}

@@ -121,6 +121,14 @@ impl Mmu {
         // Clear active allocation state
         self.active_alcs.clear();
         self.active_alcs.extend(other.active_alcs.iter());
+
+        if false {
+            // Test to make sure everyting to reset perfectly
+            assert!(self.cur_alc == other.cur_alc);
+            assert!(self.memory == other.memory);
+            assert!(self.permissions == other.permissions);
+            assert!(self.active_alcs == other.active_alcs);
+        }
     }
 
 
