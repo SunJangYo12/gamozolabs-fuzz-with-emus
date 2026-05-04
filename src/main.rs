@@ -448,17 +448,17 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.fuzz_input.clear();
 
             // Pick a random file from the corpus as an input
-            let sel = rng.rand() % corpus.inputs.len();
+            let sel = 0; //rng.rand() % corpus.inputs.len();
             if let Some(input) = corpus.inputs.get(sel) {
                 emu.fuzz_input.extend_from_slice(input);
             }
-
+/*
             if emu.fuzz_input.len() > 0 {
                 for _ in 0..rng.rand() % 16 {
                     let sel = rng.rand() % emu.fuzz_input.len();
                     emu.fuzz_input[sel] = rng.rand() as u8;
                 }
-            }
+            }*/
 
             let vmexit = loop {
                 let it = rdtsc();
@@ -611,6 +611,10 @@ fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
+}
+
+fn end_case(_emu: &mut Emulator) -> Result<(), VmExit> {
+    Err(VmExit::Exit)
 }
 
 fn main() -> io::Result<()> {
