@@ -2041,16 +2041,16 @@ impl Emulator {
         for ii in 0..33 {
             argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
         }
-        argcall.pop();
-        argcall.pop();
+        argcall += "memory. ";
+        argcall += "vmexit. ";
 
         let mut args = String::new();
         for ii in 0..33 {
             args += &format!("{:?}: u64, ",
                              Register::from(ii)).to_lowercase();
         }
-        args.pop();
-        args.pop();
+        args += "memory: &mut [u8] ";
+        args += "vmexit: VmExit ";
         print!("{}\n", args);
 
         for pc in (start..end).step_by(4) {
