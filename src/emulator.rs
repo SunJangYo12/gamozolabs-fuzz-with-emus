@@ -2051,16 +2051,20 @@ impl Emulator {
         }
         args += "memory: &mut [u8] ";
         args += "vmexit: VmExit ";
-        print!("{}\n", args);
 
+        let mut code = String::new();
         for pc in (start..end).step_by(4) {
             // Read the instruction
             let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
-            print!("{:#010x} {:#010x}\n", pc, inst);
+            // Create the function
+            code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
+            code += "}\n";
         }
+
+        std::fs::write("code.rs", code).unwrap();
 
         Err(VmExit::Exit)
     }
