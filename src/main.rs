@@ -448,7 +448,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             emu.fuzz_input.clear();
 
             // Pick a random file from the corpus as an input
-            let sel = 0; //rng.rand() % corpus.inputs.len();
+            let sel = 11; //rng.rand() % corpus.inputs.len();
             if let Some(input) = corpus.inputs.get(sel) {
                 emu.fuzz_input.extend_from_slice(input);
             }
@@ -641,6 +641,7 @@ fn main() -> io::Result<()> {
     // Create an emulator using the JIT
     let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
 
+    /* new objdump
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
         Section {
@@ -666,6 +667,27 @@ fn main() -> io::Result<()> {
 
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x10980);
+    */
+
+    emu.memory.load("../objdump", &[
+        Section {
+            file_off:    0x0000000000000000,            // first LOAD
+            virt_addr:   VirtAddr(0x0000000000010000),
+            file_size:   0x00000000000e1b74,
+            mem_size:    0x00000000000e1b74,
+            permissions: Perm(PERM_READ | PERM_EXEC),
+        },
+        Section {
+            file_off:    0x00000000000e2000,            // second LOAD
+            virt_addr:   VirtAddr(0x00000000000f2000),
+            file_size:   0x0000000000001e32,
+            mem_size:    0x00000000000046c8,
+            permissions: Perm(PERM_READ | PERM_WRITE),
+        },
+    ]).expect("Failed to load test application into address space");
+
+    emu.set_reg(Register::Pc, 0x104e8);
+
 
     // Set up a stack
     let stack = emu.memory.allocate(32 * 1024)
@@ -679,7 +701,7 @@ fn main() -> io::Result<()> {
         .expect("Failed to write program name");
     let arg1 = emu.memory.allocate(4096)
         .expect("Failed to allocated arg1");
-    emu.memory.write_from(arg1, b"-d\0")
+    emu.memory.write_from(arg1, b"-g\0")
         .expect("Failed to write arg1");
     let arg2 = emu.memory.allocate(4096)
         .expect("Failed to allocated arg2");
@@ -784,7 +806,7 @@ fn main() -> io::Result<()> {
         });
     }
 
-    for _ in 0..2 { //2 thread
+    for _ in 0..1 { //2 thread
         let new_emu = emu.fork();
         let stats   = stats.clone();
         let parent  = emu.clone();

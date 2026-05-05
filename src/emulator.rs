@@ -12,7 +12,7 @@ use crate::Corpus;
 
 /// If set, all register state will be saved before the exection of every
 /// instruction. This is INCREDIBLY slow and should only be used for debugging
-const ENABLE_TRACING: bool = true;
+const ENABLE_TRACING: bool = false;
 
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
