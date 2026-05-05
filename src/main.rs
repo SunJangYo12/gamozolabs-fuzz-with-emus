@@ -688,7 +688,7 @@ fn main() -> io::Result<()> {
         },
     ]).expect("Failed to load test application into address space");
 
-    emu.test_jit(0x0000000000010000, 0x00000000000e1b74); // base, size
+    emu.test_jit(0x0000000000010000, 0x00000000000e1b74).unwrap();
 
     emu.set_reg(Register::Pc, 0x104e8);
 

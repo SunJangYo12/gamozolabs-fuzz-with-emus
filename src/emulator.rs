@@ -2033,12 +2033,20 @@ impl Emulator {
         Ok(asm)
     }
 
-    pub fn test_jit(&self, start: usize, end: usize) {
+    pub fn test_jit(&self, start: usize, end: usize) -> Result<(), VmExit> {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
 
-        for addr in (start..end).step_by(4) {
+        for pc in (start..end).step_by(4) {
+            // Read the instruction
+            let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
+                                                    Perm(PERM_EXEC))
+                .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
+
+            print!("{:#010x} {:#010x}\n", pc, inst);
         }
+
+        Err(VmExit::Exit)
     }
 
 }
