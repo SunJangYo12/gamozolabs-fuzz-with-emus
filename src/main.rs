@@ -536,7 +536,7 @@ pub struct Corpus {
     /// Code coverage, unique PCs which havee executd during fuzzing
     pub code_coverage: Aht<VirtAddr, (), 1048576>,
 }
-/*
+
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     if let Some(alc) = emu.memory.allocate(emu.reg(Register::A1) as usize) {
         emu.set_reg(Register::A0, alc.0 as u64);
@@ -613,7 +613,6 @@ fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
-*/
 
 fn _end_case(_emu: &mut Emulator) -> Result<(), VmExit> {
     Err(VmExit::Exit)
@@ -643,7 +642,6 @@ fn main() -> io::Result<()> {
     // Create an emulator using the JIT
     let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
 
-    /* new objdump
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
         Section {
@@ -667,31 +665,10 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0x111bdc), free_bp);   // offset _free_r
     emu.add_breakpoint(VirtAddr(0x115bf4), realloc_bp);// offset _realloc_r
 
+    emu.test_jit(0x0000000000010000, 0x000000000023c188).unwrap();
+
     // Set the program entry point
     emu.set_reg(Register::Pc, 0x10980);
-    */
-
-    emu.memory.load("../objdump", &[
-        Section {
-            file_off:    0x0000000000000000,            // first LOAD
-            virt_addr:   VirtAddr(0x0000000000010000),
-            file_size:   0x00000000000e1b74,
-            mem_size:    0x00000000000e1b74,
-            permissions: Perm(PERM_READ | PERM_EXEC),
-        },
-        Section {
-            file_off:    0x00000000000e2000,            // second LOAD
-            virt_addr:   VirtAddr(0x00000000000f2000),
-            file_size:   0x0000000000001e32,
-            mem_size:    0x00000000000046c8,
-            permissions: Perm(PERM_READ | PERM_WRITE),
-        },
-    ]).expect("Failed to load test application into address space");
-
-    emu.test_jit(0x0000000000010000, 0x00000000000e1b74).unwrap();
-
-    emu.set_reg(Register::Pc, 0x104e8);
-
 
     // Set up a stack
     let stack = emu.memory.allocate(32 * 1024)
