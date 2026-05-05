@@ -462,7 +462,6 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             }*/
 
             let vmexit = loop {
-                let it = rdtsc();
                 let vmexit = emu.run(&mut run_instrs,
                                      &mut local_stats.vm_cycles,
                                      &*corpus)

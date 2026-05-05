@@ -56,7 +56,7 @@ pub enum Register {
 /// Supaya cepat dari pada switch eg. 0->Ra, 1->Sp
 impl From<u32> for Register {
     fn from(val: u32) -> Self {
-        assert!(val < 32);
+        assert!(val < 33);
         unsafe {
             core::ptr::read_unaligned(&(val as usize) as //ambil alamat dimemori
                                         *const usize as  //jadi poointer
@@ -2036,6 +2036,12 @@ impl Emulator {
     pub fn test_jit(&self, start: usize, end: usize) -> Result<(), VmExit> {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
+
+        let mut args = String::new();
+        for ii in 0..33 {
+            args += &format!("{:?}", Register::from(ii)).to_lowercase();
+        }
+        print!("{}\n", args);
 
         for pc in (start..end).step_by(4) {
             // Read the instruction
