@@ -2037,10 +2037,18 @@ impl Emulator {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
 
+        let mut argcall = String::new();
+        for ii in 0..33 {
+            argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
+        }
+        argcall.pop();
+
         let mut args = String::new();
         for ii in 0..33 {
-            args += &format!("{:?}", Register::from(ii)).to_lowercase();
+            args += &format!("{:?}: u64, ",
+                             Register::from(ii)).to_lowercase();
         }
+        args.pop();
         print!("{}\n", args);
 
         for pc in (start..end).step_by(4) {
