@@ -463,8 +463,8 @@ impl Emulator {
                 pctracestr += &format!("{:x}\n", self.reg(Register::Pc));
             }
             if self.trace.len() > 0 {
-                std::fs::write("trace.txt", tracestr);
-                std::fs::write("pctrace.txt", pctracestr);
+                std::fs::write("trace.txt", tracestr).unwrap();
+                std::fs::write("pctrace.txt", pctracestr).unwrap();
                 panic!();
             }
 
@@ -2032,5 +2032,14 @@ impl Emulator {
 
         Ok(asm)
     }
+
+    pub fn test_jit(&self, start: usize, end: usize) {
+        assert!(start & 3 == 0);
+        assert!(end & 3 == 0);
+
+        for addr in (start..end).step_by(4) {
+        }
+    }
+
 }
 

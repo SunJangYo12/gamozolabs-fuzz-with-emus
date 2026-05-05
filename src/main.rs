@@ -427,6 +427,7 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
         stats: Arc<Mutex<Statistics>>, corpus: Arc<Corpus>) {
     // Create a new random number generator
     let mut rng = Rng::new();
+    print!("{}\n", rng.rand());
 
     loop {
         // Start a timer
@@ -535,7 +536,7 @@ pub struct Corpus {
     /// Code coverage, unique PCs which havee executd during fuzzing
     pub code_coverage: Aht<VirtAddr, (), 1048576>,
 }
-
+/*
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     if let Some(alc) = emu.memory.allocate(emu.reg(Register::A1) as usize) {
         emu.set_reg(Register::A0, alc.0 as u64);
@@ -612,8 +613,9 @@ fn free_bp(emu: &mut Emulator) -> Result<(), VmExit> {
     emu.set_reg(Register::Pc, emu.reg(Register::Ra));
     Ok(())
 }
+*/
 
-fn end_case(_emu: &mut Emulator) -> Result<(), VmExit> {
+fn _end_case(_emu: &mut Emulator) -> Result<(), VmExit> {
     Err(VmExit::Exit)
 }
 
@@ -686,6 +688,8 @@ fn main() -> io::Result<()> {
         },
     ]).expect("Failed to load test application into address space");
 
+    emu.test_jit(0x0000000000010000, 0x00000000000e1b74); // base, size
+
     emu.set_reg(Register::Pc, 0x104e8);
 
 
@@ -726,11 +730,11 @@ fn main() -> io::Result<()> {
     push!(arg1.0); // Argv
     push!(progname.0); // Argv
     push!(3u64); // Argc
-/*
+
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
-        let vmexit = emu.run(&mut tmp, &*corpus)
+        let vmexit = emu.run_emu(&mut tmp, &*corpus)
             .expect_err("Failed to execute emulator");
 
         match vmexit {
@@ -750,7 +754,7 @@ fn main() -> io::Result<()> {
             _ => break,
         }
     }
-*/
+
     print!("Took snapshot\n");
 
     // Wrap the original emulator in an `Arc`
