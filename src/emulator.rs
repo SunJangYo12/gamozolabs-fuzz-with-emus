@@ -2042,12 +2042,14 @@ impl Emulator {
             argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
         }
         argcall.pop();
+        argcall.pop();
 
         let mut args = String::new();
         for ii in 0..33 {
             args += &format!("{:?}: u64, ",
                              Register::from(ii)).to_lowercase();
         }
+        args.pop();
         args.pop();
         print!("{}\n", args);
 
