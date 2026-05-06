@@ -2181,49 +2181,49 @@ impl Emulator {
                             0b000 => {
                                 // LB
                                 let mut tmp = [0u8; 1];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     i8::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b001 => {
                                 // LH
                                 let mut tmp = [0u8; 2];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     i16::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b010 => {
                                 // LW
                                 let mut tmp = [0u8; 4];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     i32::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b011 => {
                                 // LD
                                 let mut tmp = [0u8; 8];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     i64::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b100 => {
                                 // LBU
                                 let mut tmp = [0u8; 1];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     u8::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b101 => {
                                 // LHU
                                 let mut tmp = [0u8; 2];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     u16::from_le_bytes(tmp) as i64 as u64);
                             }
                             0b110 => {
                                 // LWU
                                 let mut tmp = [0u8; 4];
-                                self.memory.read_into(addr, &mut tmp)?;
+                                //self.memory.read_into(addr, &mut tmp)?;
                                 self.set_reg(inst.rd,
                                     u32::from_le_bytes(tmp) as i64 as u64);
                             }
@@ -2242,22 +2242,22 @@ impl Emulator {
                             0b000 => {
                                 // SB
                                 let val = self.reg(inst.rs2) as u8;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b001 => {
                                 // SH
                                 let val = self.reg(inst.rs2) as u16;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b010 => {
                                 // SW
                                 let val = self.reg(inst.rs2) as u32;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b011 => {
                                 // SD
                                 let val = self.reg(inst.rs2) as u64;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             _ => code += &vmexit,
                         }
@@ -2450,10 +2450,10 @@ impl Emulator {
                     0b1110011 => {
                         if inst == 0b00000000000000000000000001110011 {
                             // ECALL
-                            return Err(VmExit::Syscall);
+                            //return Err(VmExit::Syscall);
                         } else if inst == 0b00000000000100000000000001110011 {
                             // EBREAK
-                            panic!("EBREAK");
+                            // panic!("EBREAK");
                         } else {
                             code += &vmexit;
                         }
