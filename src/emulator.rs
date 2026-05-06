@@ -2039,32 +2039,39 @@ impl Emulator {
 
         let mut argcall = String::new();
         for ii in 0..33 {
-            argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
+            argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
         }
-        argcall += "memory. ";
-        argcall += "vmexit. ";
+        argcall += "_memory. ";
+        argcall += "_vmexit. ";
 
         let mut args = String::new();
         for ii in 0..33 {
-            args += &format!("{:?}: u64, ",
+            args += &format!("mut _{:?}: u64, ",
                              Register::from(ii)).to_lowercase();
         }
-        args += "memory: &mut [u8] ";
-        args += "vmexit: VmExit ";
+        args += "_memory: &mut [u8], ";
+        args += "_vmexit: u64";
 
-        let mut code = String::new();
-        for pc in (start..end).step_by(4) {
-            // Read the instruction
-            let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
+        let addrs = (start..end).step_by(4).collect::<Vec<_>>();
+        for (ii, grouping) in addrs.chunks(1000).enumerate() {
+            let mut code = String::new();
+
+            for &pc in grouping {
+                // Read the instruction
+                let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))
-                .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
+                    .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
-            // Create the function
-            code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
-            code += "}\n";
+                // Create the function
+                code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
+
+                code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+
+                code += "}\n";
+            }
+
+            std::fs::write(format!("codegen/code{}.rs", ii), code).unwrap();
         }
-
-        std::fs::write("code.rs", code).unwrap();
 
         Err(VmExit::Exit)
     }
