@@ -2037,6 +2037,8 @@ impl Emulator {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
 
+        let mut rng = crate::Rng::new();
+
         let mut argcall = String::new();
         for ii in 0..33 {
             argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
@@ -2052,11 +2054,19 @@ impl Emulator {
         args += "_memory: &mut [u8], ";
         args += "_vmexit: u64";
 
+        let mut nonameargs = String::new();
+        for ii in 0..33 {
+            nonameargs += &format!("mut _{:?}: u64, ",
+                             Register::from(ii)).to_lowercase();
+        }
+        nonameargs += "&mut [u8], ";
+        nonameargs += "u64";
+
         let addrs = (start..end).step_by(4).collect::<Vec<_>>();
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
 
-            for &pc in grouping {
+            for (ii, &pc) in grouping.iter().enumerate() {
                 // Read the instruction
                 let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))
@@ -2065,7 +2075,18 @@ impl Emulator {
                 // Create the function
                 code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
 
-                code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+                if ii != grouping.len() - 1 {
+                    code += &format!("_{} = _{};",
+                        format!("{:?}", Register::from(rng.rand() as u32 % 32))
+                            .to_lowercase(),
+                        format!("{:?}", Register::from(rng.rand() as u32 % 32))
+                            .to_lowercase());
+
+                    code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+                } else {
+                    code += &format!("extern {{ fn moose({}); }}", nonameargs);
+                    code += &format!("moose({});", argcall);
+                }
 
                 code += "}\n";
             }
