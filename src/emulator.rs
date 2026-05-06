@@ -2059,8 +2059,8 @@ impl Emulator {
             nonameargs += &format!("mut _{:?}: u64, ",
                              Register::from(ii)).to_lowercase();
         }
-        nonameargs += "&mut [u8], ";
-        nonameargs += "u64";
+        nonameargs += "_memory: &mut [u8], ";
+        nonameargs += "_vmexit: u64";
 
         let addrs = (start..end).step_by(4).collect::<Vec<_>>();
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
@@ -2084,8 +2084,8 @@ impl Emulator {
 
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
                 } else {
-                    code += &format!("extern {{ fn moose({}); }}", nonameargs);
-                    code += &format!("moose({});", argcall);
+                    code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}", nonameargs);
+                    code += &format!("unsafe {{ moose({}); }}", argcall);
                 }
 
                 code += "}\n";
