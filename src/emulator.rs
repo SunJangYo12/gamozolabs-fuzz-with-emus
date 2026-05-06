@@ -2033,14 +2033,14 @@ impl Emulator {
         Ok(asm)
     }
 
-    pub fn test_jit(&self, start: usize, end: usize) -> Result<(), VmExit> {
+    pub fn test_jit(&mut self, start: usize, end: usize) -> Result<(), VmExit> {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
 
-        let mut rng = crate::Rng::new();
+        let rng = crate::Rng::new();
         let mut reg = Vec::new();
         for ii in 0..33 {
-            reg.push(format!("_{:?}", Register::from(ii)).to_lowercase();
+            reg.push(format!("_{:?}", Register::from(ii)).to_lowercase());
         }
 
         let mut argcall = String::new();
@@ -2066,9 +2066,14 @@ impl Emulator {
         nonameargs += "_memory: &mut [u8], ";
         nonameargs += "_vmexit: u64";
 
+
+        let vmexit = format!("unsafe {{ moose({}); }}", argcall);
+
         let addrs = (start..end).step_by(4).collect::<Vec<_>>();
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
+
+            code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}", nonameargs);
 
             for (ii, &pc) in grouping.iter().enumerate() {
                 // Read the instruction
@@ -2083,25 +2088,21 @@ impl Emulator {
                 // Extract the opcode from the intruction
                 let opcode = inst & 0b1111111;
 
+                let pc = pc as u64;
+
                 match opcode {
                     0b0110111 => {
                         // LUI
                         let inst = Utype::from(inst);
-                        self.set_reg(inst.rd, inst.imm as i64 as u64);
+                        code += &format!("{} = {};\n", reg[inst.rd as usize], inst.imm);
                     }
                     0b0010111 => {
                         // AUIPC
                         let inst = Utype::from(inst);
-                        self.set_reg(inst.rd,
-                                     (inst.imm as i64 as u64).wrapping_add(pc));
                     }
                     0b1101111 => {
                         // JAL
                         let inst = Jtype::from(inst);
-                        self.set_reg(inst.rd, pc.wrapping_add(4));
-                        self.set_reg(Register::Pc,
-                                     pc.wrapping_add(inst.imm as i64 as u64));
-                        continue 'next_inst;
                     }
                     0b1100111 => {
                         // We know it's an Itype
@@ -2110,13 +2111,8 @@ impl Emulator {
                         match inst.funct3 {
                             0b000 => {
                                 // JALR
-                                let target = self.reg(inst.rs1).wrapping_add(
-                                        inst.imm as i64 as u64);
-                                self.set_reg(inst.rd, pc.wrapping_add(4));
-                                self.set_reg(Register::Pc, target);
-                                continue 'next_inst;
                             }
-                            _ => unimplemented!("Unexpected 0b1100111"),
+                            _ => code += &vmexit,
                         }
 
                     }
@@ -2133,7 +2129,6 @@ impl Emulator {
                                 if rs1 == rs2 {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
                             0b001 => {
@@ -2141,7 +2136,6 @@ impl Emulator {
                                 if rs1 != rs2 {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
                             0b100 => {
@@ -2149,7 +2143,6 @@ impl Emulator {
                                 if (rs1 as i64) < (rs2 as i64) {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
                             0b101 => {
@@ -2157,7 +2150,6 @@ impl Emulator {
                                 if (rs1 as i64) >= (rs2 as i64) {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
                             0b110 => {
@@ -2165,7 +2157,6 @@ impl Emulator {
                                 if (rs1 as u64) < (rs2 as u64) {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
                             0b111 => {
@@ -2173,10 +2164,9 @@ impl Emulator {
                                 if (rs1 as u64) >= (rs2 as u64) {
                                     self.set_reg(Register::Pc,
                                         pc.wrapping_add(inst.imm as i64 as u64));
-                                    continue 'next_inst;
                                 }
                             }
-                            _ => unimplemented!("Unexpected 0b1100011"),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0000011 => {
@@ -2237,7 +2227,7 @@ impl Emulator {
                                 self.set_reg(inst.rd,
                                     u32::from_le_bytes(tmp) as i64 as u64);
                             }
-                            _ => unimplemented!("Unexpected 0b1100111"),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0100011 => {
@@ -2269,7 +2259,7 @@ impl Emulator {
                                 let val = self.reg(inst.rs2) as u64;
                                 self.memory.write(addr, val)?;
                             }
-                            _ => unimplemented!("Unexpected 0b0100011"),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0010011 => {
@@ -2321,7 +2311,7 @@ impl Emulator {
                                         let shamt = inst.imm & 0b111111;
                                         self.set_reg(inst.rd, rs1 << shamt);
                                     }
-                                    _ => unimplemented!("Unexpected 0b0010011"),
+                                    _ => code += &vmexit,
                                 }
                             }
                             0b101 => {
@@ -2339,10 +2329,10 @@ impl Emulator {
                                         self.set_reg(inst.rd,
                                             ((rs1 as i64) >> shamt) as u64);
                                     }
-                                    _ => unreachable!(),
+                                    _ => code += &vmexit,
                                 }
                             }
-                            _ => unreachable!(),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0110011 => {
@@ -2405,7 +2395,7 @@ impl Emulator {
                                 // AND
                                 self.set_reg(inst.rd, rs1 & rs2);
                             }
-                            _ => unreachable!(),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0111011 => {
@@ -2444,7 +2434,7 @@ impl Emulator {
                                 self.set_reg(inst.rd,
                                     ((rs1 as i32) >> shamt) as i64 as u64);
                             }
-                            _ => unreachable!(),
+                            _ => code += &vmexit,
                         }
                     }
                     0b0001111 => {
@@ -2454,7 +2444,7 @@ impl Emulator {
                             0b000 => {
                                 // FENCE
                             }
-                            _ => unreachable!(),
+                            _ => code += &vmexit,
                         }
                     }
                     0b1110011 => {
@@ -2465,7 +2455,7 @@ impl Emulator {
                             // EBREAK
                             panic!("EBREAK");
                         } else {
-                            unreachable!()
+                            code += &vmexit;
                         }
                     }
                     0b0011011 => {
@@ -2491,7 +2481,7 @@ impl Emulator {
                                         self.set_reg(inst.rd,
                                             (rs1 << shamt) as i32 as i64 as u64);
                                     }
-                                    _ => unreachable!(),
+                                    _ => code += &vmexit,
                                 }
                             }
                             0b101 => {
@@ -2510,13 +2500,13 @@ impl Emulator {
                                         self.set_reg(inst.rd,
                                             ((rs1 as i32) >> shamt) as i64 as u64);
                                     }
-                                    _ => unreachable!(),
+                                    _ => code += &vmexit,
                                 }
                             }
-                            _ => unreachable!(),
+                            _ => code += &vmexit,
                         }
                     }
-                    _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
+                    _ => code += &vmexit,
                 }
 
                 code += "}\n";
