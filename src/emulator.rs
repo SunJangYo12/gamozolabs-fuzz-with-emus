@@ -2037,6 +2037,8 @@ impl Emulator {
         assert!(start & 3 == 0);
         assert!(end & 3 == 0);
 
+        let mut rng = crate::Rng::new();
+
         let mut argcall = String::new();
         for ii in 0..33 {
             argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
@@ -2066,6 +2068,12 @@ impl Emulator {
                 code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
 
                 if ii != grouping.len() - 1 {
+                    code += &format!("_{} = _{};",
+                        format!("{:?}", Register::from(rng.rand() as u32 % 32))
+                            .to_lowercase(),
+                        format!("{:?}", Register::from(rng.rand() as u32 % 32))
+                            .to_lowercase()
+                    );
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
                 }
 
