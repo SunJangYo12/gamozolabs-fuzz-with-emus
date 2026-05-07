@@ -2075,12 +2075,16 @@ impl Emulator {
                             .to_lowercase()
                     );
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+                } else {
+                    code += &format!("extern {{ fn moose({}); }}", args);
+                    code += &format!("moose({});", argcall);
                 }
 
                 code += "}\n";
             }
 
             std::fs::write(format!("codegen/code{}.rs", ii), code).unwrap();
+            break;
         }
 
         Err(VmExit::Exit)
