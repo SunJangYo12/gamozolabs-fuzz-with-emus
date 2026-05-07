@@ -2054,6 +2054,12 @@ impl Emulator {
         args += "_memory: &mut [u8], ";
         args += "_vmexit: u64";
 
+        let mut nonameargs = String::new();
+        for ii in 0..33 {
+            nonameargs += &format!("u64, ");
+        }
+        nonameargs += "&mut [u8], ";
+        nonameargs += "u64";
         let addrs = (start..end).step_by(4).collect::<Vec<_>>();
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
@@ -2076,7 +2082,7 @@ impl Emulator {
                     );
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
                 } else {
-                    code += &format!("extern {{ fn moose({}); }}", args);
+                    code += &format!("extern {{ fn moose({}); }}", nonameargs);
                     code += &format!("moose({});", argcall);
                 }
 
@@ -2084,6 +2090,8 @@ impl Emulator {
             }
 
             std::fs::write(format!("codegen/code{}.rs", ii), code).unwrap();
+
+            // JIN debug, only generate one file
             break;
         }
 
