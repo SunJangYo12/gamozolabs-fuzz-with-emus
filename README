@@ -23,3 +23,18 @@ JIT exited with 1 0xc07e8
 cd inputs
 find /usr/bin | xargs -i file {} | grep ELF | cut -f 1 -d ':' | xargs -i cp {} .
 
+# compile codegen
+ls codegen | parallel rustc --crate-type=dylib --emit=obj -O codegen/{}
+time ld.lld-10 ./.o
+
+ls codegen | parallel rustc --crate-type=staticlib -O -A unused-unsafe -C lto=fat -O codegen/{}
+
+fuzz_with_emus/test-jit$ ls ../codegen | parallel rustc --crate-type=dylib --emit=obj -O -A unused-unsafe ../codegen/{}
+ld.lld-10 ./*.o
+
+ls ../codegen | parallel rustc --crate-type=dylib --emit=obj -O -A unused-unsafe -C lto=fat ../codegen/{}
+
+#rlib
+ls ../codegen | parallel rustc --crate-type=lib -O -A unused-unsafe -C lto=fat ../codegen/{}
+rustc -lcode100 test.rs
+rustc --extern=libcode100.rlib test.rs
