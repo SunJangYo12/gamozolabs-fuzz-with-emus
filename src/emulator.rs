@@ -2039,7 +2039,7 @@ impl Emulator {
 
         let mut argcall = String::new();
         for ii in 0..33 {
-            argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
+            argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
         }
         argcall += "_memory, ";
         argcall += "_vmexit";
@@ -2063,7 +2063,9 @@ impl Emulator {
                     .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
                 // Create the function
-                code += &format!("pub fn inst_{:#018x}({}) -> u64 {{{}\n", pc, args, pc);
+                code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
+
+                code += &format!("inst_{:#018x}({});", pc + 4, argcall);
 
                 code += "}\n";
             }
