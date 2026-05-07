@@ -2056,7 +2056,7 @@ impl Emulator {
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
 
-            for &pc in grouping {
+            for (ii, &pc) in grouping.iter().enumerate() {
                 // Read the instruction
                 let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
                                                     Perm(PERM_EXEC))
@@ -2065,7 +2065,9 @@ impl Emulator {
                 // Create the function
                 code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
 
-                code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+                if ii != grouping.len() - 1 {
+                    code += &format!("inst_{:#018x}({});", pc + 4, argcall);
+                }
 
                 code += "}\n";
             }
