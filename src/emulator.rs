@@ -2063,7 +2063,7 @@ impl Emulator {
                     .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
                 // Create the function
-                code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
+                code += &format!("pub fn inst_{:#018x}({}) -> u64 {{{}\n", pc, args, pc);
 
                 code += "}\n";
             }
