@@ -2056,10 +2056,12 @@ impl Emulator {
 
         let mut nonameargs = String::new();
         for ii in 0..33 {
-            nonameargs += &format!("u64, ");
+            nonameargs += &format!("_{:?}: u64, ",
+                             Register::from(ii)).to_lowercase();
         }
-        nonameargs += "&mut [u8], ";
-        nonameargs += "u64";
+        nonameargs += "_memory: &mut [u8], ";
+        nonameargs += "_vmexit: u64";
+
         let addrs = (start..end).step_by(4).collect::<Vec<_>>();
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
@@ -2082,8 +2084,8 @@ impl Emulator {
                     );
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
                 } else {
-                    code += &format!("extern {{ fn moose({}); }}", nonameargs);
-                    code += &format!("moose({});", argcall);
+                    code += &format!("extern \"Rust\" {{ fn moose({}); }}", nonameargs);
+                    code += &format!("unsafe {{ moose({}); }}", argcall);
                 }
 
                 code += "}\n";
