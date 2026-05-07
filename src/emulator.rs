@@ -2082,7 +2082,7 @@ impl Emulator {
                     .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
                 // Create the function
-                code += &format!("pub unsafe fn inst_{:#018x}({}) {{\n", pc, args);
+                code += &format!("#[no_mangle] pub unsafe fn inst_{:#018x}({}) {{\n", pc, args);
 
                 // Extract the opcode from the intruction
                 let opcode = inst & 0b1111111;
@@ -2511,7 +2511,7 @@ impl Emulator {
                 }
 
                 if ii == grouping.len() - 1 {
-                    code += &format!("extern \"Rust\" {{ fn inst_{:#018x}({}); }}\n",
+                    code += &format!("extern \"Rust\" {{ #[no_mangle] fn inst_{:#018x}({}); }}\n",
                         pc + 4, nonameargs);
                 }
 
