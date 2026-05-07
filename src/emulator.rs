@@ -2047,8 +2047,8 @@ impl Emulator {
         for ii in 0..33 {
             argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
         }
-        argcall += "_memory. ";
-        argcall += "_vmexit. ";
+        argcall += "_memory, ";
+        argcall += "_vmexit";
 
         let mut args = String::new();
         for ii in 0..33 {
@@ -2060,7 +2060,7 @@ impl Emulator {
 
         let mut nonameargs = String::new();
         for ii in 0..33 {
-            nonameargs += &format!("mut _{:?}: u64, ",
+            nonameargs += &format!("_{:?}: u64, ",
                              Register::from(ii)).to_lowercase();
         }
         nonameargs += "_memory: &mut [u8], ";
@@ -2073,7 +2073,7 @@ impl Emulator {
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
 
-            code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}", nonameargs);
+            code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}\n", nonameargs);
 
             for (ii, &pc) in grouping.iter().enumerate() {
                 // Read the instruction
@@ -2082,8 +2082,7 @@ impl Emulator {
                     .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
                 // Create the function
-                code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
-
+                code += &format!("pub unsafe fn inst_{:#018x}({}) {{\n", pc, args);
 
                 // Extract the opcode from the intruction
                 let opcode = inst & 0b1111111;
@@ -2094,7 +2093,9 @@ impl Emulator {
                     0b0110111 => {
                         // LUI
                         let inst = Utype::from(inst);
-                        code += &format!("  {} = {};\n", reg[inst.rd as usize], inst.imm);
+                        code += &format!("  {} = {};\n",
+                                    reg[inst.rd as usize],
+                                    inst.imm as i64 as u64);
                     }
                     0b0010111 => {
                         // AUIPC
@@ -2507,6 +2508,11 @@ impl Emulator {
                         }
                     }
                     _ => code += &vmexit,
+                }
+
+                if ii == grouping.len() - 1 {
+                    code += &format!("extern \"Rust\" {{ fn inst_{:#018x}({}); }}\n",
+                        pc + 4, nonameargs);
                 }
 
                 code += &format!("  inst_{:#018x}({});\n", pc + 4, argcall);
