@@ -2084,7 +2084,7 @@ impl Emulator {
                     );
                     code += &format!("inst_{:#018x}({});", pc + 4, argcall);
                 } else {
-                    code += &format!("extern \"Rust\" {{ fn moose({}); }}", nonameargs);
+                    code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}", nonameargs);
                     code += &format!("unsafe {{ moose({}); }}", argcall);
                 }
 
