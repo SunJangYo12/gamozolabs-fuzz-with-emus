@@ -2039,10 +2039,10 @@ impl Emulator {
 
         let mut argcall = String::new();
         for ii in 0..33 {
-            argcall += &format!("_{:?}, ", Register::from(ii)).to_lowercase();
+            argcall += &format!("{:?}, ", Register::from(ii)).to_lowercase();
         }
-        argcall += "_memory. ";
-        argcall += "_vmexit. ";
+        argcall += "_memory, ";
+        argcall += "_vmexit";
 
         let mut args = String::new();
         for ii in 0..33 {
@@ -2064,8 +2064,6 @@ impl Emulator {
 
                 // Create the function
                 code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
-
-                code += &format!("inst_{:#018x}({});", pc + 4, argcall);
 
                 code += "}\n";
             }
