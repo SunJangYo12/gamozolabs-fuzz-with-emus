@@ -1,6 +1,6 @@
 all:
 	rustc -O -C lto=fat --emit=obj --crate-type=lib -C panic=abort ./test.rs
-	objcopy --only-section=.text._ZN4test4main17h73ce7f407753b6f0E ./test.o #objdump -h ./test.o
+	objcopy --only-section=.text* ./test.o #objdump -h ./test.o
 
 	ld.lld-10 -static -o test test.o
 	readelf -l ./test
