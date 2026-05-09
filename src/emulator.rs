@@ -2082,7 +2082,7 @@ impl Emulator {
                     .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
                 // Create the function
-                code += &format!("pub fn inst_{:#018x}({}) {{\n", pc, args);
+                code += &format!("pub unsafe fn inst_{:#018x}({}) {{\n", pc, args);
 
                 // Extract the opcode from the intruction
                 let opcode = inst & 0b1111111;
@@ -2094,7 +2094,8 @@ impl Emulator {
                         // LUI
                         let inst = Utype::from(inst);
                         code += &format!("  {} = {};\n",
-                                        reg[inst.rd as usize], inst.imm);
+                                        reg[inst.rd as usize],
+                                        inst.imm as i64 as u64);
                     }
                     0b0010111 => {
                         // AUIPC
@@ -2518,8 +2519,12 @@ impl Emulator {
                     _ => code += &vmexit,
                 }
 
-                code += &format!("  inst_{:#018x}({});\n",
-                                pc + 4, argcall);
+                if ii == grouping.len() - 1 {
+                    code += &format!("extern \"Rust\" {{ fn inst_{:#018x}({}); }}\n",
+                        pc + 4, nonameargs);
+                }
+
+                code += &format!("  inst_{:#018x}({});\n", pc + 4, argcall);
                 code += "}\n";
             }
 
