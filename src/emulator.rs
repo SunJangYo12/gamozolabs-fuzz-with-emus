@@ -2251,22 +2251,22 @@ impl Emulator {
                             0b000 => {
                                 // SB
                                 let val = self.reg(inst.rs2) as u8;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b001 => {
                                 // SH
                                 let val = self.reg(inst.rs2) as u16;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b010 => {
                                 // SW
                                 let val = self.reg(inst.rs2) as u32;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             0b011 => {
                                 // SD
                                 let val = self.reg(inst.rs2) as u64;
-                                self.memory.write(addr, val)?;
+                                //self.memory.write(addr, val)?;
                             }
                             _ => code += &vmexit,
                         }
@@ -2459,10 +2459,10 @@ impl Emulator {
                     0b1110011 => {
                         if inst == 0b00000000000000000000000001110011 {
                             // ECALL
-                            return Err(VmExit::Syscall);
+                            //return Err(VmExit::Syscall);
                         } else if inst == 0b00000000000100000000000001110011 {
                             // EBREAK
-                            panic!("EBREAK");
+                            //panic!("EBREAK");
                         } else {
                             code += &vmexit;
                         }
