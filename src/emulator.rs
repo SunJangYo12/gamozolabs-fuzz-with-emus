@@ -2093,7 +2093,7 @@ impl Emulator {
                     0b0110111 => {
                         // LUI
                         let inst = Utype::from(inst);
-                        code += &format!("{} = {};\n",
+                        code += &format!("  {} = {};\n",
                                         reg[inst.rd as usize], inst.imm);
                     }
                     0b0010111 => {
@@ -2518,13 +2518,15 @@ impl Emulator {
                     _ => code += &vmexit,
                 }
 
+                code += &format!("  inst_{:#018x}({});\n",
+                                pc + 4, argcall);
                 code += "}\n";
             }
 
             std::fs::write(format!("codegen/code{}.rs", ii), code).unwrap();
 
             // JIN debug, only generate one file
-            //break;
+            break;
         }
 
         Err(VmExit::Exit)
