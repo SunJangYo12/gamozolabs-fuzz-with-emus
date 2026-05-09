@@ -6,4 +6,4 @@ all:
 	readelf -l ./test
 #	objcopy -O binary --only-section=.text ./test ./test.bin
 	objcopy -O binary ./test ./test.bin
-#	ndisasm -b64 ./test.bin
+	ndisasm -b64 ./test.bin
