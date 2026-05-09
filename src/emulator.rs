@@ -2073,7 +2073,7 @@ impl Emulator {
         for (ii, grouping) in addrs.chunks(1000).enumerate() {
             let mut code = String::new();
 
-            code += &format!("extern \"Rust\" {{ #[no_mangle] fn moose({}); }}\n", nonameargs);
+            code += &format!("#![no_std] extern \"Rust\" {{ #[no_mangle] fn moose({}); }}\n", nonameargs);
 
             for (ii, &pc) in grouping.iter().enumerate() {
                 // Read the instruction
@@ -2531,7 +2531,7 @@ impl Emulator {
             std::fs::write(format!("codegen/code{}.rs", ii), code).unwrap();
 
             // JIN debug, only generate one file
-            break;
+            //break;
         }
 
         Err(VmExit::Exit)
