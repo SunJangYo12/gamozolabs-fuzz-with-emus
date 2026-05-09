@@ -7,6 +7,7 @@ while [ 1 ]; do
     git add src/emulator.rs
     git add src/jitcache.rs
     git add zz.sh
+    git add README
 
     git commit -m "$msg"
 done

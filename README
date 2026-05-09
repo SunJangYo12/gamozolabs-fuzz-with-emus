@@ -23,3 +23,8 @@ JIT exited with 1 0xc07e8
 cd inputs
 find /usr/bin | xargs -i file {} | grep ELF | cut -f 1 -d ':' | xargs -i cp {} .
 
+# compile codegen
+ls codegen | parallel rustc --crate-type=dylib --emit=obj -O codegen/{}
+rustc --crate-type=dylib --emit=obj -O ./moose.rs
+ld.lld-10 ./*.o
+
