@@ -7,10 +7,10 @@ pub struct Registers {
     rdx: u64,
 }
 
-static FOO: u64 = 5;
-
 pub fn main(regs: &mut Registers) {
     regs.rax += 1;
     regs.rax -= 5;
-    //regs.rax += unsafe { FOO };
+    if regs.rax > 5 {
+        regs.rbx += 5;
+    }
 }
