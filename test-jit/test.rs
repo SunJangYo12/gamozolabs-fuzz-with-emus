@@ -9,11 +9,16 @@ pub struct Registers {
 }
 
 #[inline(always)]
-fn noret() -> ! {
-    unsafe { asm!(".byte 0x41, 0x41, 0x41, 0x41", options(noreturn)) }
+fn jumpto(pc: usize, jmptbl: usize, regs: &mut Registers) -> ! {
+    unsafe {
+        asm!(r#"
+            // Look up PC in table
+            jmp rax
+        "#, options(noreturn))
+    }
 }
 
-pub fn main(regs: &mut Registers) {
+pub extern fn main(jmptbl: usize, regs: &mut Registers) {
     regs.rax += 1;
     regs.rax -= 5;
     if regs.rax > 5 {
@@ -22,5 +27,5 @@ pub fn main(regs: &mut Registers) {
         regs.rax -= 5;
     }
 
-    noret();
+    jumpto(0x5004, jmptbl, regs)
 }
