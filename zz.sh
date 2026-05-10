@@ -11,6 +11,7 @@ while [ 1 ]; do
     git add test-jit/Makefile
     git add test-jit/test.rs
     git add test-jit/test.c
+    git add test-jit/test.cpp
 
     git commit -m "$msg"
 done
