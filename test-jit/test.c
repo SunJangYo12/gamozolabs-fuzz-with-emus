@@ -7,10 +7,17 @@ struct _registers {
     uint64_t rdx;
 };
 
+_Noreturn
 void jmpout() {
+    asm volatile(
+        ".intel_syntax noprefix;"
+    );
+
+    for( ; ; );
 }
 
-void inst_0000(struct _registers *regs) {
+_Noreturn
+void inst_0000(void *jmptbl, struct _registers *regs) {
 inst_0000:
     regs->rax += 1;
 inst_0004:
