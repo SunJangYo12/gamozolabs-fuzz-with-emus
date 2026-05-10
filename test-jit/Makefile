@@ -1,6 +1,6 @@
 all:
 	# Compile the Rust file to an object
-	clang -O3 -o ./test.o -c ./test.c
+	clang -O3 -Wall -Werror -o ./test.o -c ./test.c
 
 	# Strip everyting exept for the next sections
 	objcopy --only-section=.text* ./test.o #objdump -h ./test.o
