@@ -14,7 +14,7 @@ static void jmpout(void *jmptbl, struct _registers *regs);
 
 _Noreturn
 void inst_0000(void *jmptbl, struct _registers *regs) {
-    char foo[1024] = { 0 };
+    volatile char foo[1024];
 
 inst_0000:
     regs->rax += 1;
