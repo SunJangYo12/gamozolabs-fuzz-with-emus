@@ -8,10 +8,10 @@ struct _registers {
 };
 
 _Noreturn
-void jmpout() {
-    asm volatile(
-        R"asdf(".intel_syntax noprefix;")asdf"
-    );
+void jmpout(void *jmptbl, struct _registers *regs) {
+    asm volatile(R"goodstr(
+        int3
+    )goodstr");
 
     for( ; ; );
 }
@@ -27,8 +27,8 @@ inst_0008:
         goto inst_0010;
     }
 inst_000c:
-    jmpout();
+    jmpout(jmptbl, regs);
 inst_0010:
     regs->rax = 17;
-    jmpout();
+    jmpout(jmptbl, regs);
 }
