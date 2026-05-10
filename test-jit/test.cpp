@@ -7,14 +7,10 @@ struct _registers {
     uint64_t rdx;
 };
 
-_Noreturn
-void jmpout(void *jmptbl, struct _registers *regs) {
-    asm volatile(R"goodstr(
-        int3
-    )goodstr");
 
-    for( ; ; );
-}
+__attribute__((always_inline))
+_Noreturn
+void jmpout(void *jmptbl, struct _registers *regs);
 
 _Noreturn
 void inst_0000(void *jmptbl, struct _registers *regs) {
@@ -31,4 +27,15 @@ inst_000c:
 inst_0010:
     regs->rax = 17;
     jmpout(jmptbl, regs);
+}
+
+
+__attribute__((always_inline))
+_Noreturn
+void jmpout(void *jmptbl, struct _registers *regs) {
+    asm volatile(R"goodstr(
+        int3
+    )goodstr");
+
+    for( ; ; );
 }
