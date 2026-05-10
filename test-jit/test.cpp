@@ -14,6 +14,8 @@ static void jmpout(void *jmptbl, struct _registers *regs);
 
 _Noreturn
 void inst_0000(void *jmptbl, struct _registers *regs) {
+    char foo[1024] = { 0 };
+
 inst_0000:
     regs->rax += 1;
     goto inst_0004;
@@ -22,6 +24,7 @@ inst_0004:
     goto inst_0008;
 inst_0008:
     if (regs->rax != 0) {
+        foo[53] = 6;
         goto inst_0010;
     }
     goto inst_000c;
