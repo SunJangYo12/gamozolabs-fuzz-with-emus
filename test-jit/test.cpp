@@ -37,5 +37,5 @@ static void jmpout(void *jmptbl, struct _registers *regs) {
         int3
     )goodstr");
 
-    for( ; ; );
+    __builtin_unreachable();
 }
