@@ -10,7 +10,7 @@ struct _registers {
 
 __attribute__((always_inline))
 _Noreturn
-void jmpout(void *jmptbl, struct _registers *regs);
+static void jmpout(void *jmptbl, struct _registers *regs);
 
 _Noreturn
 void inst_0000(void *jmptbl, struct _registers *regs) {
@@ -32,7 +32,7 @@ inst_0010:
 
 __attribute__((always_inline))
 _Noreturn
-void jmpout(void *jmptbl, struct _registers *regs) {
+static void jmpout(void *jmptbl, struct _registers *regs) {
     asm volatile(R"goodstr(
         int3
     )goodstr");
