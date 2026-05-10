@@ -1,5 +1,5 @@
+#![feature(asm, naked_functions)]
 #![no_std]
-#![feature(asm)]
 
 pub struct Registers {
     rax: u64,
@@ -18,14 +18,14 @@ fn jumpto(pc: usize, jmptbl: usize, regs: &mut Registers) -> ! {
     }
 }
 
-pub extern fn main(jmptbl: usize, regs: &mut Registers) {
-    regs.rax += 1;
-    regs.rax -= 5;
+#[naked]
+pub extern "C" fn main(jmptbl: usize, regs: &mut Registers) {
+//    regs.rax += 1;
+//    regs.rax -= 5;
     if regs.rax > 5 {
-        regs.rax += 5;
+        jumpto(0x19000, jmptbl, regs)
     } else {
-        regs.rax -= 5;
+        jumpto(0x5004, jmptbl, regs)
     }
 
-    jumpto(0x5004, jmptbl, regs)
 }
