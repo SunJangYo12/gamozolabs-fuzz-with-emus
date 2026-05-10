@@ -44,7 +44,7 @@ pub extern "C" fn main(jmptbl: usize, regs: &mut Registers) {
 
             'inst_0008: loop {
                 if regs.rax != 0 {
-                    jumpto(0x0000, jmptbl, regs);
+                    continue 'inst_0000;
                 }
 
                 'inst_000c: loop {
