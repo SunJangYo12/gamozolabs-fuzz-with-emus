@@ -32,8 +32,10 @@ fn jumpto(pc: usize, jmptbl: usize, regs: &mut Registers) -> ! {
 pub extern "C" fn main(jmptbl: usize, regs: &mut Registers) {
     // 0000 add rax, 1
     // 0004 sub rax, 5
-    // 0008 bnez rax, 0000
+    // 0008 bnez rax, 0010
     // 000c ret
+    // 0010 mov rax, 17
+    // 0014 ret
 
     // start loop
     'inst_0000: loop {
@@ -44,10 +46,9 @@ pub extern "C" fn main(jmptbl: usize, regs: &mut Registers) {
 
             'inst_0008: loop {
                 if regs.rax != 0 {
-                    continue 'inst_0000;
-                }
-
-                'inst_000c: loop {
+                    jumpto(regs.ra as usize, jmptbl, regs);
+                } else {
+                    regs.rax = 17;
                     jumpto(regs.ra as usize, jmptbl, regs);
                 }
             }

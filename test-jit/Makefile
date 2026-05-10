@@ -1,6 +1,6 @@
 all:
 	# Compile the Rust file to an object
-	rustc -O -C lto=fat --emit=obj --crate-type=lib -C panic=abort ./test.rs
+	clang -o ./test.o -c ./test.c
 
 	# Strip everyting exept for the next sections
 	objcopy --only-section=.text* ./test.o #objdump -h ./test.o
