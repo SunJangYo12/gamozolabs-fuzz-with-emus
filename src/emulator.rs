@@ -2044,6 +2044,7 @@ impl Emulator {
 
         let mut program = String::new();
         program += r#"
+#include <stddef.h>
 #include <stdint.h>
 
 struct _state {
@@ -2485,7 +2486,22 @@ struct _state {
             }
         }
 
-        std::fs::write("program.c", program).expect("Failed to write program");
+        // Write out the test program
+        std::fs::write("program.cpp", program)
+            .expect("Failed to write program");
+
+        // Create the object file
+        let res = Command::new("clang++").args(&[
+            "-O3", "-march=native", "-Wall",
+            "-fno-asynchronous-unwind-tables", "-Wno-unused-label",
+            "-Werror",
+            "-static", "-nostdlib",
+            "-Wl,-Tldscript.txt",
+            "-o", "./test",
+            "./program.cpp"]).status()
+            .expect("Failed to launch c++");
+        assert!(res.success(), "clang++ returned error");
+
         Ok(())
     }
 }
