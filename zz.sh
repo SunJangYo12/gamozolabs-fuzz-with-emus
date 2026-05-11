@@ -8,10 +8,6 @@ while [ 1 ]; do
     git add src/jitcache.rs
     git add zz.sh
     git add README
-    git add test-jit/Makefile
-    git add test-jit/test.rs
-    git add test-jit/test.c
-    git add test-jit/test.cpp
 
     git commit -m "$msg"
 done

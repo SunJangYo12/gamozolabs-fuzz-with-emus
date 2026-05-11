@@ -2056,6 +2056,8 @@ struct _state {
     size_t     dirty_idx;
     uint8_t   *dirty_bitmap;
 };
+
+void _start(struct _state *state) {
         "#;
 
         while let Some(pc) = queued.pop_front() {
@@ -2486,6 +2488,9 @@ struct _state {
             }
         }
 
+        // Close the function scope
+        program += "}\n";
+
         // Write out the test program
         std::fs::write("program.cpp", program)
             .expect("Failed to write program");
@@ -2496,7 +2501,7 @@ struct _state {
             "-fno-asynchronous-unwind-tables", "-Wno-unused-label",
             "-Werror",
             "-static", "-nostdlib","-ffreestanding",
-            "-Wl,-Tldscript.ld",
+            "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
             "-o", "./test",
             "./program.cpp"]).status()
             .expect("Failed to launch c++");
