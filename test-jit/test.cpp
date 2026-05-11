@@ -1,14 +1,21 @@
 #include <tuple>
 #include <stdint.h>
 
+enum _exitcodes {
+    IndirectBranch = 0,
+};
+
 struct _registers {
+    uint64_t exitcode;
+    uint64_t exitinfo;
+
     uint64_t rax;
     uint64_t rbx;
     uint64_t rcx;
     uint64_t rdx;
 };
 
-std::tuple<uint64_t, uint64_t> inst_0000(void *jmptbl, struct _registers *regs) {
+extern "C" void entry(void *jmptbl, struct _registers *regs) {
 inst_0000:
     regs->rax += 1;
     goto inst_0004;
@@ -21,9 +28,13 @@ inst_0008:
     }
     goto inst_000c;
 inst_000c:
-    return std::make_tuple(0x5483, 5);
+    regs->exitcode = IndirectBranch;
+    regs->exitinfo = 1241299;
+    return;
     goto inst_0010;
 inst_0010:
     regs->rax = 17;
-    return std::make_tuple(0x54833429, 5);
+    regs->exitcode = IndirectBranch;
+    regs->exitinfo = 12412;
+    return;
 }
