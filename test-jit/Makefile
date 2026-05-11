@@ -7,7 +7,7 @@ all:
 
 	# Link into a static binary, this will fail if the file refereced
 	# any section other than text
-	ld.lld-10 --nmagic --entry=entry -static -o test test.o
+	ld.lld-10 --nmagic -static -o test test.o
 
 	readelf -l ./test
 

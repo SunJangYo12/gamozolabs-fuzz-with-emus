@@ -15,7 +15,7 @@ struct _registers {
     uint64_t rdx;
 };
 
-extern "C" void entry(void *jmptbl, struct _registers *regs) {
+extern "C" void _start(void *jmptbl, struct _registers *regs) {
 inst_0000:
     regs->rax += 1;
     goto inst_0004;
