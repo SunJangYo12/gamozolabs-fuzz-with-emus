@@ -2496,15 +2496,15 @@ struct _state {
             "-fno-asynchronous-unwind-tables", "-Wno-unused-label",
             "-Werror",
             "-static", "-nostdlib","-ffreestanding",
-            "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
+            "-Wl,-Tldscript.ld",
             "-o", "./test",
             "./program.cpp"]).status()
             .expect("Failed to launch c++");
         assert!(res.success(), "clang++ returned error");
 
         // Convert the ELF a binary
-        let res = Command::new("objcopy").args(&[
-            "-O", "binary", "./test", "./test.bin"]).status()
+        let res = Command::new("objcopy")
+            .args(&["-O", "binary", "./test", "./test.bin"]).status()
             .expect("Failed to launch objcopy");
         assert!(res.success(), "objcopy returned error");
 
