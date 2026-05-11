@@ -2490,17 +2490,23 @@ struct _state {
         std::fs::write("program.cpp", program)
             .expect("Failed to write program");
 
-        // Create the object file
+        // Create the ELF
         let res = Command::new("clang++").args(&[
             "-O3", "-march=native", "-Wall",
             "-fno-asynchronous-unwind-tables", "-Wno-unused-label",
             "-Werror",
-            "-static", "-nostdlib",
-            "-Wl,-Tldscript.txt",
+            "-static", "-nostdlib","-ffreestanding",
+            "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
             "-o", "./test",
             "./program.cpp"]).status()
             .expect("Failed to launch c++");
         assert!(res.success(), "clang++ returned error");
+
+        // Convert the ELF a binary
+        let res = Command::new("objcopy").args(&[
+            "-O", "binary", "./test", "./test.bin"]).status()
+            .expect("Failed to launch objcopy");
+        assert!(res.success(), "objcopy returned error");
 
         Ok(())
     }
