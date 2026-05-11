@@ -2042,6 +2042,21 @@ impl Emulator {
         let pc = self.reg(Register::Pc);
         queued.push_back(VirtAddr(pc as usize));
 
+        let mut program = String::new();
+        program += r#"
+#include <stdint.h>
+
+struct _state {
+    uint64_t   regs[33];
+    uint8_t   *memory;
+    uint8_t   *permissions;
+    size_t     memory_len;
+    uintptr_t *dirty;
+    size_t     dirty_idx;
+    uint8_t   *dirty_bitmap;
+};
+        "#;
+
         while let Some(pc) = queued.pop_front() {
             assert!(visited.insert(pc), "Whoa, duplicate queued PC");
 
@@ -2468,8 +2483,9 @@ impl Emulator {
                 }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
-
         }
+
+        std::fs::write("program.c", program).expect("Failed to write program");
         Ok(())
     }
 }
