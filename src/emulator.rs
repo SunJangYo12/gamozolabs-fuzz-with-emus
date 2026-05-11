@@ -3,7 +3,7 @@
 use std::fmt;
 use std::process::Command;
 use std::sync::Arc;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use crate::rdtsc;
 use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
@@ -2035,47 +2035,30 @@ impl Emulator {
 
     // Run the VM using the emulator
     pub fn test_jit(&mut self) -> Result<(), VmExit> {
-        'next_inst: loop {
-            // Get the current program counter
-            let pc = self.reg(Register::Pc);
+        let mut visited = BTreeSet::new();
+        let mut queued = VecDeque::new();
+
+        // Get the current program counter and insert it into the queue
+        let pc = self.reg(Register::Pc);
+        queued.push_back(VirtAddr(pc as usize));
+
+        while let Some(pc) = queued.pop_front() {
+            assert!(visited.insert(pc), "Whoa, duplicate queued PC");
 
             // Check alignment
-            if pc & 3 != 0 {
+            if pc.0 & 3 != 0 {
                 // Code was unaligned, return a code fetch fault
-                return Err(VmExit::ExecFault(VirtAddr(pc as usize)));
+                return Err(VmExit::ExecFault(pc));
             }
 
             // Read the instruction
-            let inst: u32 = self.memory.read_perms(VirtAddr(pc as usize),
-                                                    Perm(PERM_EXEC))
+            let inst: u32 = self.memory.read_perms(pc, Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
-            if let Some(callback) =
-                    self.breakpoints.get(&VirtAddr(pc as usize)) {
-                // Invoke the breakpoint callback
-                callback(self)?;
-
-                if self.reg(Register::Pc) != pc {
-                    // Callback changed PC, re-start emulation loop
-                    continue 'next_inst;
-                }
-            }
-
-            // Update number of instructions executed
-            *instrs_execed += 1;
+            print!("Lifting {:#x?}\n", pc);
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
-
-            // Update code coverage
-            corpus.code_coverage.entry_or_insert(
-                &VirtAddr(pc as usize), pc as usize, || {
-                    corpus.inputs.push(Box::new(self.fuzz_input.clone()));
-
-                    Box::new(())
-            });
-
-//            print!("{}\n\n", self);
 
             match opcode {
                 0b0110111 => {
@@ -2086,16 +2069,10 @@ impl Emulator {
                 0b0010111 => {
                     // AUIPC
                     let inst = Utype::from(inst);
-                    self.set_reg(inst.rd,
-                                 (inst.imm as i64 as u64).wrapping_add(pc));
                 }
                 0b1101111 => {
                     // JAL
                     let inst = Jtype::from(inst);
-                    self.set_reg(inst.rd, pc.wrapping_add(4));
-                    self.set_reg(Register::Pc,
-                                 pc.wrapping_add(inst.imm as i64 as u64));
-                    continue 'next_inst;
                 }
                 0b1100111 => {
                     // We know it's an Itype
@@ -2106,9 +2083,6 @@ impl Emulator {
                             // JALR
                             let target = self.reg(inst.rs1).wrapping_add(
                                     inst.imm as i64 as u64);
-                            self.set_reg(inst.rd, pc.wrapping_add(4));
-                            self.set_reg(Register::Pc, target);
-                            continue 'next_inst;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
@@ -2125,49 +2099,31 @@ impl Emulator {
                         0b000 => {
                             // BEQ
                             if rs1 == rs2 {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         0b001 => {
                             // BNE
                             if rs1 != rs2 {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         0b100 => {
                             // BLT
                             if (rs1 as i64) < (rs2 as i64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         0b101 => {
                             // BGE
                             if (rs1 as i64) >= (rs2 as i64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         0b110 => {
                             // BLTU
                             if (rs1 as u64) < (rs2 as u64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         0b111 => {
                             // BGEU
                             if (rs1 as u64) >= (rs2 as u64) {
-                                self.set_reg(Register::Pc,
-                                    pc.wrapping_add(inst.imm as i64 as u64));
-                                continue 'next_inst;
                             }
                         }
                         _ => unimplemented!("Unexpected 0b1100011"),
@@ -2185,49 +2141,49 @@ impl Emulator {
                         0b000 => {
                             // LB
                             let mut tmp = [0u8; 1];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 i8::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b001 => {
                             // LH
                             let mut tmp = [0u8; 2];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 i16::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b010 => {
                             // LW
                             let mut tmp = [0u8; 4];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 i32::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b011 => {
                             // LD
                             let mut tmp = [0u8; 8];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 i64::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b100 => {
                             // LBU
                             let mut tmp = [0u8; 1];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 u8::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b101 => {
                             // LHU
                             let mut tmp = [0u8; 2];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 u16::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b110 => {
                             // LWU
                             let mut tmp = [0u8; 4];
-                            self.memory.read_into(addr, &mut tmp)?;
+                            //self.memory.read_into(addr, &mut tmp)?;
                             self.set_reg(inst.rd,
                                 u32::from_le_bytes(tmp) as i64 as u64);
                         }
@@ -2246,22 +2202,22 @@ impl Emulator {
                         0b000 => {
                             // SB
                             let val = self.reg(inst.rs2) as u8;
-                            self.memory.write(addr, val)?;
+                            //self.memory.write(addr, val)?;
                         }
                         0b001 => {
                             // SH
                             let val = self.reg(inst.rs2) as u16;
-                            self.memory.write(addr, val)?;
+                            //self.memory.write(addr, val)?;
                         }
                         0b010 => {
                             // SW
                             let val = self.reg(inst.rs2) as u32;
-                            self.memory.write(addr, val)?;
+                            //self.memory.write(addr, val)?;
                         }
                         0b011 => {
                             // SD
                             let val = self.reg(inst.rs2) as u64;
-                            self.memory.write(addr, val)?;
+                            //self.memory.write(addr, val)?;
                         }
                         _ => unimplemented!("Unexpected 0b0100011"),
                     }
@@ -2513,10 +2469,8 @@ impl Emulator {
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
 
-            // Update PC to the next intruction
-            self.set_reg(Register::Pc, pc.wrapping_add(4));
         }
+        Ok(())
     }
-
 }
 
