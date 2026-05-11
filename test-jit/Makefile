@@ -1,5 +1,6 @@
 all:
 	# Compile the Rust file to an object
+#	clang++ -O3 -Wall -fno-asynchronous-unwind-tables -Wno-unused-label -Werror -o ./test.o -c ./test.cpp
 	clang++ -O3 -Wall -Wno-unused-label -Werror -o ./test.o -c ./test.cpp
 
 	# Strip everyting exept for the next sections
