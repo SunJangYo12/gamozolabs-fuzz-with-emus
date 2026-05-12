@@ -2102,7 +2102,7 @@ extern "C" void start(struct _state *state) {
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
             // Create the instruction start label
-            program += &format!("inst_{:016x}:\n", pc.0);
+            program += &format!("inst_{:016x}: {{\n", pc.0);
 
             print!("Lifting {:#x?}\n", pc);
 
@@ -2131,6 +2131,7 @@ extern "C" void start(struct _state *state) {
                     set_reg!(inst.rd, retaddr);
                     program += &format!("   goto inst_{:016x};\n", target);
                     queued.push_back(VirtAddr(target));
+                    program += "   }\n";
                     continue;
                 }
                 0b1100111 => {
@@ -2142,7 +2143,7 @@ extern "C" void start(struct _state *state) {
                             // JALR
                             let retaddr = pc.0.wrapping_add(4);
                             get_reg!("auto target", inst.rs1);
-                            program += &format!("   target += {}ULL\n",
+                            program += &format!("   target += {}ULL;\n",
                                 inst.imm as i64 as u64);
                             set_reg!(inst.rd, retaddr);
                             program +=
@@ -2151,6 +2152,7 @@ extern "C" void start(struct _state *state) {
                                 "   state->reenter_pc = target;\n";
                             program +=
                                 "   return;\n";
+                            program += "   }\n";
                             continue;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
@@ -2484,6 +2486,7 @@ extern "C" void start(struct _state *state) {
             }
 
             let next_inst = pc.0.wrapping_add(4);
+            program += "    }\n";
             program += &format!("   goto inst_{:016x};\n", next_inst);
             queued.push_back(VirtAddr(next_inst));
         }
