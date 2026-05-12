@@ -2071,7 +2071,7 @@ extern "C" void start(struct _state *state) {
         macro_rules! set_reg {
             ($reg:expr, $expr:expr) => {
                 if $reg != Register::Zero {
-                    program += &format!("   state->regs[{}] = {}ULL;\n",
+                    program += &format!("   state->regs[{}] = {};\n",
                         $reg as usize, $expr);
                 }
             }
@@ -2113,14 +2113,15 @@ extern "C" void start(struct _state *state) {
                 0b0110111 => {
                     // LUI
                     let inst = Utype::from(inst);
-                    set_reg!(inst.rd, inst.imm as i64 as u64);
+                    set_reg!(inst.rd,
+                        &format!("{}ULL", inst.imm as i64 as u64));
                 }
                 0b0010111 => {
                     // AUIPC
                     let inst = Utype::from(inst);
                     let val =
                         (inst.imm as i64 as u64).wrapping_add(pc.0 as u64);
-                    set_reg!(inst.rd, val);
+                    set_reg!(inst.rd, format!("{}ULL", val));
                 }
                 0b1101111 => {
                     // JAL
@@ -2141,7 +2142,7 @@ extern "C" void start(struct _state *state) {
                             // JALR
                             let retaddr = pc.0.wrapping_add(4);
                             get_reg!("auto target", inst.rs1);
-                            program += &format!("   target += {}\n",
+                            program += &format!("   target += {}ULL\n",
                                 inst.imm as i64 as u64);
                             set_reg!(inst.rd, retaddr);
                             program +=
@@ -2198,52 +2199,24 @@ extern "C" void start(struct _state *state) {
                     match inst.funct3 {
                         0b000 => {
                             // LB
-                            let mut tmp = [0u8; 1];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i8::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b001 => {
                             // LH
-                            let mut tmp = [0u8; 2];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i16::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b010 => {
                             // LW
-                            let mut tmp = [0u8; 4];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i32::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b011 => {
                             // LD
-                            let mut tmp = [0u8; 8];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                i64::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b100 => {
                             // LBU
-                            let mut tmp = [0u8; 1];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u8::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b101 => {
                             // LHU
-                            let mut tmp = [0u8; 2];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u16::from_le_bytes(tmp) as i64 as u64);
                         }
                         0b110 => {
                             // LWU
-                            let mut tmp = [0u8; 4];
-                            //self.memory.read_into(addr, &mut tmp)?;
-                            self.set_reg(inst.rd,
-                                u32::from_le_bytes(tmp) as i64 as u64);
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
@@ -2259,23 +2232,15 @@ extern "C" void start(struct _state *state) {
                     match inst.funct3 {
                         0b000 => {
                             // SB
-                            let val = self.reg(inst.rs2) as u8;
-                            //self.memory.write(addr, val)?;
                         }
                         0b001 => {
                             // SH
-                            let val = self.reg(inst.rs2) as u16;
-                            //self.memory.write(addr, val)?;
                         }
                         0b010 => {
                             // SW
-                            let val = self.reg(inst.rs2) as u32;
-                            //self.memory.write(addr, val)?;
                         }
                         0b011 => {
                             // SD
-                            let val = self.reg(inst.rs2) as u64;
-                            //self.memory.write(addr, val)?;
                         }
                         _ => unimplemented!("Unexpected 0b0100011"),
                     }
@@ -2284,41 +2249,36 @@ extern "C" void start(struct _state *state) {
                     // We know it's an Itype
                     let inst = Itype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let imm = inst.imm as i64 as u64;
-
                     match inst.funct3 {
                         0b000 => {
                             // ADDI
-                            self.set_reg(inst.rd, rs1.wrapping_add(imm));
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd, format!("rs1 + {}ULL",
+                                inst.imm as i64 as u64));
                         }
                         0b010 => {
                             // SLTI
-                            if (rs1 as i64) < (imm as i64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
                         }
                         0b011 => {
                             // SLTIU
-                            if (rs1 as u64) < (imm as u64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
                         }
                         0b100 => {
                             // XORI
-                            self.set_reg(inst.rd, rs1 ^ imm);
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd, format!("rs1 ^ {}ULL",
+                                inst.imm as i64 as u64));
                         }
                         0b110 => {
                             // ORI
-                            self.set_reg(inst.rd, rs1 | imm);
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd, format!("rs1 | {}ULL",
+                                inst.imm as i64 as u64));
                         }
                         0b111 => {
                             // ANDI
-                            self.set_reg(inst.rd, rs1 & imm);
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd, format!("rs1 & {}ULL",
+                                inst.imm as i64 as u64));
                         }
                         0b001 => {
                             let mode = (inst.imm >> 6) & 0b111111;
@@ -2327,7 +2287,6 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SLLI
                                     let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd, rs1 << shamt);
                                 }
                                 _ => unimplemented!("Unexpected 0b0010011"),
                             }
@@ -2339,13 +2298,10 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SRLI
                                     let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd, rs1 >> shamt);
                                 }
                                 0b010000 => {
                                     // SRAI
                                     let shamt = inst.imm & 0b111111;
-                                    self.set_reg(inst.rd,
-                                        ((rs1 as i64) >> shamt) as u64);
                                 }
                                 _ => unreachable!(),
                             }
@@ -2526,6 +2482,10 @@ extern "C" void start(struct _state *state) {
                 }
                 _ => unimplemented!("Unhandle opcode {:#09b}\n", opcode),
             }
+
+            let next_inst = pc.0.wrapping_add(4);
+            program += &format!("   goto inst_{:016x};\n", next_inst);
+            queued.push_back(VirtAddr(next_inst));
         }
 
         // Close the function scope
