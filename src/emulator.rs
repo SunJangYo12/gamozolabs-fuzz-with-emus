@@ -2502,7 +2502,7 @@ extern "C" void start(struct _state *state) {
 
         // Create the ELF
         let res = Command::new("clang++").args(&[
-            "-O3", "-march=native", "-Wall",
+            "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables", "-Wno-unused-label",
             "-Werror",
             "-static", "-nostdlib","-ffreestanding",
