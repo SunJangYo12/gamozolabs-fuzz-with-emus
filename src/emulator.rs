@@ -2043,7 +2043,8 @@ impl Emulator {
         queued.push_back(VirtAddr(pc as usize));
 
         let mut program = String::new();
-        program += r#"
+        program +=
+r#"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -2057,8 +2058,8 @@ struct _state {
     uint8_t   *dirty_bitmap;
 };
 
-void _start(struct _state *state) {
-        "#;
+extern "C" void start(struct _state *state) {
+"#;
 
         while let Some(pc) = queued.pop_front() {
             assert!(visited.insert(pc), "Whoa, duplicate queued PC");
@@ -2072,6 +2073,10 @@ void _start(struct _state *state) {
             // Read the instruction
             let inst: u32 = self.memory.read_perms(pc, Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
+
+            // Create the instruction start label
+            program += &format!("inst_{:016x}:\n", pc.0);
+            program += "state->regs[0] = 5;\n";
 
             print!("Lifting {:#x?}\n", pc);
 
