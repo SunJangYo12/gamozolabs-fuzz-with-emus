@@ -2128,7 +2128,7 @@ extern "C" void start(struct _state *state) {
                     let retaddr = pc.0.wrapping_add(4);
                     let target  = pc.0.wrapping_add(inst.imm as i64 as usize);
                     set_reg!(inst.rd, retaddr);
-                    program += &format!("   goto inst_{:016x};", target);
+                    program += &format!("   goto inst_{:016x};\n", target);
                     queued.push_back(VirtAddr(target));
                     continue;
                 }
@@ -2150,6 +2150,7 @@ extern "C" void start(struct _state *state) {
                                 "   state->reenter_pc = target;\n";
                             program +=
                                 "   return;\n";
+                            continue;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }
@@ -2162,39 +2163,29 @@ extern "C" void start(struct _state *state) {
                     let rs1 = self.reg(inst.rs1);
                     let rs2 = self.reg(inst.rs2);
 
-                    match inst.funct3 {
-                        0b000 => {
-                            // BEQ
-                            if rs1 == rs2 {
-                            }
-                        }
-                        0b001 => {
-                            // BNE
-                            if rs1 != rs2 {
-                            }
-                        }
-                        0b100 => {
-                            // BLT
-                            if (rs1 as i64) < (rs2 as i64) {
-                            }
-                        }
-                        0b101 => {
-                            // BGE
-                            if (rs1 as i64) >= (rs2 as i64) {
-                            }
-                        }
-                        0b110 => {
-                            // BLTU
-                            if (rs1 as u64) < (rs2 as u64) {
-                            }
-                        }
-                        0b111 => {
-                            // BGEU
-                            if (rs1 as u64) >= (rs2 as u64) {
-                            }
-                        }
+                    let (cmptyp, cmpop) = match inst.funct3 {
+                        0b000 => /* BEQ  */ ("int64_t",  "=="),
+                        0b001 => /* BNE  */ ("int64_t",  "!="),
+                        0b100 => /* BLT  */ ("int64_t",  "<"),
+                        0b101 => /* BGE  */ ("int64_t",  ">="),
+                        0b110 => /* BLTU */ ("uint64_t", "<"),
+                        0b111 => /* BGEU */ ("uint64_t", ">="),
                         _ => unimplemented!("Unexpected 0b1100011"),
-                    }
+                    };
+
+                    // Compute branch target
+                    let target = pc.0.wrapping_add(inst.imm as i64 as usize);
+
+                    get_reg!("auto rs1", inst.rs1);
+                    get_reg!("auto rs2", inst.rs2);
+                    program += &format!("   if (({})rs1 {} ({})rs2) {{\n",
+                        cmptyp, cmpop, cmptyp);
+                    program +=
+                        &format!("  goto inst_{:016x};\n", target);
+                    program += "    }\n";
+
+                    // Queue exploration of this target
+                    queued.push_back(VirtAddr(target));
                 }
                 0b0000011 => {
                     // We knwo it's an ITtype
