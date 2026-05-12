@@ -2070,6 +2070,17 @@ extern "C" void start(struct _state *state) {
             }
         }
 
+        macro_rules! get_reg {
+            ($expr:expr, $reg:expr) => {
+                if $reg == Register::Zero {
+                    program += &format!("   {} = 0;\n", $expr);
+                } else {
+                    program += &format!("   {} = state->regs[{}];\n",
+                        $expr, $reg as usize);
+                }
+            }
+        }
+
         while let Some(pc) = queued.pop_front() {
             assert!(visited.insert(pc), "Whoa, duplicate queued PC");
 
@@ -2087,6 +2098,9 @@ extern "C" void start(struct _state *state) {
             program += &format!("inst_{:016x}:\n", pc.0);
             set_reg!(Register::Zero, 5);
             set_reg!(Register::Ra, "5 + 32");
+
+            get_reg!("auto tmp", Register::Zero);
+            get_reg!("auto tmp2", Register::Ra);
 
             print!("Lifting {:#x?}\n", pc);
 
