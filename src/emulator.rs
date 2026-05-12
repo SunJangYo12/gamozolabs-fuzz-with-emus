@@ -2048,7 +2048,14 @@ r#"
 #include <stddef.h>
 #include <stdint.h>
 
+enum _vmexit {
+    IndirectBranch,
+};
+
 struct _state {
+    enum _vmexit exit_reason;
+    uint64_t     reenter_pc;
+
     uint64_t   regs[33];
     uint8_t   *memory;
     uint8_t   *permissions;
@@ -2064,7 +2071,7 @@ extern "C" void start(struct _state *state) {
         macro_rules! set_reg {
             ($reg:expr, $expr:expr) => {
                 if $reg != Register::Zero {
-                    program += &format!("   state->regs[{}] = {};\n",
+                    program += &format!("   state->regs[{}] = {}ULL;\n",
                         $reg as usize, $expr);
                 }
             }
@@ -2118,6 +2125,12 @@ extern "C" void start(struct _state *state) {
                 0b1101111 => {
                     // JAL
                     let inst = Jtype::from(inst);
+                    let retaddr = pc.0.wrapping_add(4);
+                    let target  = pc.0.wrapping_add(inst.imm as i64 as usize);
+                    set_reg!(inst.rd, retaddr);
+                    program += &format!("   goto inst_{:016x};", target);
+                    queued.push_back(VirtAddr(target));
+                    continue;
                 }
                 0b1100111 => {
                     // We know it's an Itype
@@ -2126,8 +2139,17 @@ extern "C" void start(struct _state *state) {
                     match inst.funct3 {
                         0b000 => {
                             // JALR
-                            let target = self.reg(inst.rs1).wrapping_add(
-                                    inst.imm as i64 as u64);
+                            let retaddr = pc.0.wrapping_add(4);
+                            get_reg!("auto target", inst.rs1);
+                            program += &format!("   target += {}\n",
+                                inst.imm as i64 as u64);
+                            set_reg!(inst.rd, retaddr);
+                            program +=
+                                "   state->exit_reason = IndirectBranch;\n";
+                            program +=
+                                "   state->reenter_pc = target;\n";
+                            program +=
+                                "   return;\n";
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
                     }

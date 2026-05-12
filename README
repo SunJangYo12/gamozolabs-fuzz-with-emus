@@ -33,4 +33,5 @@ cc -O2 test.c -Wl,-Bstatic *.rlib -Wl,-Bdynamic -o a.out
 
 # NOTE
 untuk WARNING di `git log` menandakan atau fix tidak sama dengan video kreator
+dan hanya berfungsi di pc saya.
 
