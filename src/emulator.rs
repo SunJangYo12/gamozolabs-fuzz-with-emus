@@ -2509,7 +2509,8 @@ void _start(struct _state *state) {
 
         // Convert the ELF a binary
         let res = Command::new("objcopy")
-            .args(&["-O", "binary", "./test", "./test.bin"]).status()
+            .args(&["-O", "binary", "--remove-section=.note.gnu.property",
+                    "./test", "./test.bin"]).status()
             .expect("Failed to launch objcopy");
         assert!(res.success(), "objcopy returned error");
 
