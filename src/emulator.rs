@@ -2071,7 +2071,7 @@ extern "C" void start(struct _state *state) {
         macro_rules! set_reg {
             ($reg:expr, $expr:expr) => {
                 if $reg != Register::Zero {
-                    program += &format!("   state->regs[{}] = {};\n",
+                    program += &format!("    state->regs[{}] = {};\n",
                         $reg as usize, $expr);
                 }
             }
@@ -2080,9 +2080,9 @@ extern "C" void start(struct _state *state) {
         macro_rules! get_reg {
             ($expr:expr, $reg:expr) => {
                 if $reg == Register::Zero {
-                    program += &format!("   {} = 0;\n", $expr);
+                    program += &format!("    {} = 0;\n", $expr);
                 } else {
-                    program += &format!("   {} = state->regs[{}];\n",
+                    program += &format!("    {} = state->regs[{}];\n",
                         $expr, $reg as usize);
                 }
             }
@@ -2129,7 +2129,7 @@ extern "C" void start(struct _state *state) {
                     let retaddr = pc.0.wrapping_add(4);
                     let target  = pc.0.wrapping_add(inst.imm as i64 as usize);
                     set_reg!(inst.rd, retaddr);
-                    program += &format!("   goto inst_{:016x};\n", target);
+                    program += &format!("    goto inst_{:016x};\n", target);
                     queued.push_back(VirtAddr(target));
                     program += "   }\n";
                     continue;
@@ -2143,15 +2143,15 @@ extern "C" void start(struct _state *state) {
                             // JALR
                             let retaddr = pc.0.wrapping_add(4);
                             get_reg!("auto target", inst.rs1);
-                            program += &format!("   target += {}ULL;\n",
+                            program += &format!("    target += {}ULL;\n",
                                 inst.imm as i64 as u64);
                             set_reg!(inst.rd, retaddr);
                             program +=
-                                "   state->exit_reason = IndirectBranch;\n";
+                                "    state->exit_reason = IndirectBranch;\n";
                             program +=
-                                "   state->reenter_pc = target;\n";
+                                "    state->reenter_pc = target;\n";
                             program +=
-                                "   return;\n";
+                                "    return;\n";
                             program += "   }\n";
                             continue;
                         }
@@ -2184,7 +2184,7 @@ extern "C" void start(struct _state *state) {
                     program += &format!("   if (({})rs1 {} ({})rs2) {{\n",
                         cmptyp, cmpop, cmptyp);
                     program +=
-                        &format!("  goto inst_{:016x};\n", target);
+                        &format!("   goto inst_{:016x};\n", target);
                     program += "    }\n";
 
                     // Queue exploration of this target
@@ -2487,7 +2487,7 @@ extern "C" void start(struct _state *state) {
 
             let next_inst = pc.0.wrapping_add(4);
             program += "    }\n";
-            program += &format!("   goto inst_{:016x};\n", next_inst);
+            program += &format!("    goto inst_{:016x};\n", next_inst);
             queued.push_back(VirtAddr(next_inst));
         }
 
