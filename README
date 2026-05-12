@@ -30,3 +30,7 @@ rustc --crate-type=lib -O -C lto=fat ./moose.rs
 === 5:38 ===
 cc -O2 -Wl,--as-needed test.c -Wl,-Bstatic *.rlib -Wl,-Bdynamic -o a.out
 cc -O2 test.c -Wl,-Bstatic *.rlib -Wl,-Bdynamic -o a.out
+
+# NOTE
+untuk WARNING di `git log` menandakan atau fix tidak sama dengan video kreator
+
