@@ -2061,6 +2061,15 @@ struct _state {
 extern "C" void start(struct _state *state) {
 "#;
 
+        macro_rules! set_reg {
+            ($reg:expr, $expr:expr) => {
+                if $reg != Register::Zero {
+                    program += &format!("   state->regs[{}] = {};\n",
+                        $reg as usize, $expr);
+                }
+            }
+        }
+
         while let Some(pc) = queued.pop_front() {
             assert!(visited.insert(pc), "Whoa, duplicate queued PC");
 
@@ -2076,7 +2085,8 @@ extern "C" void start(struct _state *state) {
 
             // Create the instruction start label
             program += &format!("inst_{:016x}:\n", pc.0);
-            program += "state->regs[0] = 5;\n";
+            set_reg!(Register::Zero, 5);
+            set_reg!(Register::Ra, "5 + 32");
 
             print!("Lifting {:#x?}\n", pc);
 
