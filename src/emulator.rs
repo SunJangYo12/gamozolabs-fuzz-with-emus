@@ -2096,11 +2096,6 @@ extern "C" void start(struct _state *state) {
 
             // Create the instruction start label
             program += &format!("inst_{:016x}:\n", pc.0);
-            set_reg!(Register::Zero, 5);
-            set_reg!(Register::Ra, "5 + 32");
-
-            get_reg!("auto tmp", Register::Zero);
-            get_reg!("auto tmp2", Register::Ra);
 
             print!("Lifting {:#x?}\n", pc);
 
@@ -2111,11 +2106,14 @@ extern "C" void start(struct _state *state) {
                 0b0110111 => {
                     // LUI
                     let inst = Utype::from(inst);
-                    self.set_reg(inst.rd, inst.imm as i64 as u64);
+                    set_reg!(inst.rd, inst.imm as i64 as u64);
                 }
                 0b0010111 => {
                     // AUIPC
                     let inst = Utype::from(inst);
+                    let val =
+                        (inst.imm as i64 as u64).wrapping_add(pc.0 as u64);
+                    set_reg!(inst.rd, val);
                 }
                 0b1101111 => {
                     // JAL
@@ -2529,7 +2527,7 @@ extern "C" void start(struct _state *state) {
             "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables",
             "-Wno-unused-label",
-            "-Wno-unused-variable",
+            //"-Wno-unused-variable",
             "-Werror",
             "-static", "-nostdlib","-ffreestanding",
             "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
