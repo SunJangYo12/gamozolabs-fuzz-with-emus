@@ -2166,9 +2166,6 @@ extern "C" void start(struct _state *state) {
                     // We know it's an Btype
                     let inst = Btype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let rs2 = self.reg(inst.rs2);
-
                     let (cmptyp, cmpop) = match inst.funct3 {
                         0b000 => /* BEQ  */ ("int64_t",  "=="),
                         0b001 => /* BNE  */ ("int64_t",  "!="),
@@ -2439,9 +2436,6 @@ extern "C" void start(struct _state *state) {
                     // We know it's an Rtype
                     let inst = Rtype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1) as u32;
-                    let rs2 = self.reg(inst.rs2) as u32;
-
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADDW
@@ -2509,9 +2503,6 @@ extern "C" void start(struct _state *state) {
                 0b0011011 => {
                     // We know it's an Itype
                     let inst = Itype::from(inst);
-
-                    let rs1 = self.reg(inst.rs1) as u32;
-                    let imm = inst.imm as u32;
 
                     match inst.funct3 {
                         0b000 => {
