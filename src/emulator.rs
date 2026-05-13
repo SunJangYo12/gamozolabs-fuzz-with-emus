@@ -5,7 +5,7 @@ use std::process::Command;
 use std::sync::Arc;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use crate::rdtsc;
-use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC};
+use crate::mmu::{VirtAddr, Perm, PERM_READ, PERM_WRITE, PERM_EXEC, PERM_RAW};
 use crate::mmu::{Mmu, DIRTY_BLOCK_SIZE};
 use crate::jitcache::JitCache;
 use crate::Corpus;
@@ -2219,12 +2219,13 @@ extern "C" void start(struct _state *state) {
                     program += &format!("   addr += {}ULL;\n",
                         inst.imm as i64 as u64);
 
-                    // Check the bounds of the address
+                    // Check the bounds of the address and permissions
                     program += &format!(r#"
     if (addr > state->memory_len - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = ReadFault;
         state->reenter_pc = {:#x}ULL;
+        return;
     }}
     "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
 
@@ -2235,25 +2236,52 @@ extern "C" void start(struct _state *state) {
                     // We knwo it's an STtype
                     let inst = Stype::from(inst);
 
-                    // Compute the address
-                    let addr = VirtAddr(self.reg(inst.rs1)
-                        .wrapping_add(inst.imm as i64 as u64) as usize);
+                    let (storetyp, access_size) = match inst.funct3 {
+                        0b000 => /* SB  */ ("uint8_t", 1),
+                        0b001 => /* SH  */ ("uint16_t", 2),
+                        0b010 => /* SW  */ ("uint32_t", 4),
+                        0b011 => /* SD  */ ("uint64_t", 8),
+                        _ => unreachable!(),
+                    };
 
-                    match inst.funct3 {
-                        0b000 => {
-                            // SB
-                        }
-                        0b001 => {
-                            // SH
-                        }
-                        0b010 => {
-                            // SW
-                        }
-                        0b011 => {
-                            // SD
-                        }
-                        _ => unimplemented!("Unexpected 0b0100011"),
+                    // Compute the write permissions mask and the
+                    // RAW permissions mask
+                    let mut perm_mask = 0u64;
+                    let mut raw_mask = 0u64;
+                    for ii in 0..access_size {
+                        perm_mask |= (PERM_WRITE as u64) << (ii * 8);
+                        raw_mask  |= (PERM_RAW as u64) << (ii * 8);
                     }
+
+                    // Compute the address
+                    get_reg!("auto addr", inst.rs1);
+                    program += &format!("   addr += {}ULL;\n",
+                        inst.imm as i64 as u64);
+
+                    // Check the bounds of the address and permissions
+                    program += &format!(r#"
+    if (addr > state->memory_len - sizeof({}) ||
+            (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
+        state->exit_reason = WriteFault;
+        state->reenter_pc = {:#x}ULL;
+        return;
+    }}
+
+    // Enable reads for memory with RAW set
+    auto perms = (*({}*)(state->permissions + addr);
+    perms &= {:#x}ULL;
+    *({}*)(state->permissions + addr) |= perms >= 3;
+
+    auto block = addr / {};
+    auto idx   = block / 64;
+    auto bit   = 1 << (block % 64);
+    if ((state->dirty_bitmap[idx] & bit) == 0) {{
+         state->dirty[state->dirty_idx++] = block;
+    }}
+
+    "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
+        raw_mask, storetyp, DIRTY_BLOCK_SIZE);
+
                 }
                 0b0010011 => {
                     // We know it's an Itype
@@ -2268,9 +2296,17 @@ extern "C" void start(struct _state *state) {
                         }
                         0b010 => {
                             // SLTI
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd,
+                                format!("((int64_t)rs1 < {}LL) ? 1 : 0",
+                                inst.imm as i64));
                         }
                         0b011 => {
                             // SLTIU
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd,
+                                format!("((uint64_t)rs1 < {}ULL) ? 1 : 0",
+                                inst.imm as i64 as u64));
                         }
                         0b100 => {
                             // XORI
@@ -2297,6 +2333,9 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SLLI
                                     let shamt = inst.imm & 0b111111;
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd, format!("rs1 << {}",
+                                        shamt));
                                 }
                                 _ => unimplemented!("Unexpected 0b0010011"),
                             }
@@ -2308,10 +2347,16 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SRLI
                                     let shamt = inst.imm & 0b111111;
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd, format!("rs1 >> {}",
+                                        shamt));
                                 }
                                 0b010000 => {
                                     // SRAI
                                     let shamt = inst.imm & 0b111111;
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd,
+                                        format!("(int64_t)rs1 >> {}", shamt));
                                 }
                                 _ => unreachable!(),
                             }
