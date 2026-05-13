@@ -408,6 +408,7 @@ pub struct Emulator {
 impl Emulator {
     /// Creates a new emulator with `size` bytes of memory
     pub fn new(size: usize) -> Self {
+        assert!(size >= 8, "Must have at least 8 bytes of memory");
         Emulator {
             memory:     Mmu::new(size),
             registers:  [0; 33],
@@ -2050,6 +2051,8 @@ r#"
 
 enum _vmexit {
     IndirectBranch,
+    ReadFault,
+    WriteFault,
 };
 
 struct _state {
@@ -2129,9 +2132,9 @@ extern "C" void start(struct _state *state) {
                     let retaddr = pc.0.wrapping_add(4);
                     let target  = pc.0.wrapping_add(inst.imm as i64 as usize);
                     set_reg!(inst.rd, retaddr);
-                    program += &format!("    goto inst_{:016x};\n", target);
+                    program += &format!("goto inst_{:016x};\n", target);
                     queued.push_back(VirtAddr(target));
-                    program += "   }\n";
+                    program += "}\n";
                     continue;
                 }
                 0b1100111 => {
@@ -2152,7 +2155,7 @@ extern "C" void start(struct _state *state) {
                                 "    state->reenter_pc = target;\n";
                             program +=
                                 "    return;\n";
-                            program += "   }\n";
+                            program += "}\n";
                             continue;
                         }
                         _ => unimplemented!("Unexpected 0b1100111"),
@@ -2194,34 +2197,39 @@ extern "C" void start(struct _state *state) {
                     // We knwo it's an ITtype
                     let inst = Itype::from(inst);
 
-                    // Compute the address
-                    let addr = VirtAddr(self.reg(inst.rs1)
-                        .wrapping_add(inst.imm as i64 as u64) as usize);
+                    let (loadtyp, access_size) = match inst.funct3 {
+                        0b000 => /* LB  */ ("int8_t",   1),
+                        0b001 => /* LH  */ ("int16_t",  2),
+                        0b010 => /* LW  */ ("int32_t",  4),
+                        0b011 => /* LD  */ ("int64_t",  8),
+                        0b100 => /* LBU */ ("uint8_t",  1),
+                        0b101 => /* LHU */ ("uint16_t", 2),
+                        0b110 => /* LWU */ ("uint32_t", 4),
+                        _ => unreachable!(),
+                    };
 
-                    match inst.funct3 {
-                        0b000 => {
-                            // LB
-                        }
-                        0b001 => {
-                            // LH
-                        }
-                        0b010 => {
-                            // LW
-                        }
-                        0b011 => {
-                            // LD
-                        }
-                        0b100 => {
-                            // LBU
-                        }
-                        0b101 => {
-                            // LHU
-                        }
-                        0b110 => {
-                            // LWU
-                        }
-                        _ => unimplemented!("Unexpected 0b1100111"),
+                    // Compute the read permissions mask
+                    let mut perm_mask = 0u64;
+                    for ii in 0..access_size {
+                        perm_mask |= (PERM_READ as u64) << (ii * 8)
                     }
+
+                    // Compute the address
+                    get_reg!("auto addr", inst.rs1);
+                    program += &format!("   addr += {}ULL;\n",
+                        inst.imm as i64 as u64);
+
+                    // Check the bounds of the address
+                    program += &format!(r#"
+    if (addr > state->memory_len - sizeof({}) ||
+            (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
+        state->exit_reason = ReadFault;
+        state->reenter_pc = {:#x}ULL;
+    }}
+    "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
+
+                    set_reg!(inst.rd, format!("*({}*)(state->memory + addr)",
+                        loadtyp));
                 }
                 0b0100011 => {
                     // We knwo it's an STtype
@@ -2486,7 +2494,7 @@ extern "C" void start(struct _state *state) {
             }
 
             let next_inst = pc.0.wrapping_add(4);
-            program += "    }\n";
+            program += "}\n";
             program += &format!("    goto inst_{:016x};\n", next_inst);
             queued.push_back(VirtAddr(next_inst));
         }
