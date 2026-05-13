@@ -2368,61 +2368,69 @@ extern "C" void start(struct _state *state) {
                     // We know it's an Rtype
                     let inst = Rtype::from(inst);
 
-                    let rs1 = self.reg(inst.rs1);
-                    let rs2 = self.reg(inst.rs2);
-
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADD
-                            self.set_reg(inst.rd, rs1.wrapping_add(rs2));
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 + rs2");
                         }
                         (0b0100000, 0b000) => {
                             // SUB
-                            self.set_reg(inst.rd, rs1.wrapping_sub(rs2));
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 - rs2");
                         }
                         (0b0000000, 0b001) => {
                             // SLL
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd, rs1 << shamt);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 << (rs2 & 0x3f)");
                         }
                         (0b0000000, 0b010) => {
                             // SLT
-                            if (rs1 as i64) < (rs2 as i64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd,
+                                "((int64_t)rs1 < (int64_t)rs2) ? 1 : 0");
                         }
                         (0b0000000, 0b011) => {
                             // SLTU
-                            if (rs1 as u64) < (rs2 as u64) {
-                                self.set_reg(inst.rd, 1);
-                            } else {
-                                self.set_reg(inst.rd, 0);
-                            }
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd,
+                                "((uint64_t)rs1 < (int64_t)rs2) ? 1 : 0");
                         }
                         (0b0000000, 0b100) => {
                             // XOR
-                            self.set_reg(inst.rd, rs1 ^ rs2);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 ^ rs2");
                         }
                         (0b0000000, 0b101) => {
                             // SRL
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd, rs1 >> shamt);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 >> (rs2 & 0x3f)");
                         }
                         (0b0100000, 0b101) => {
                             // SRA
-                            let shamt = rs2 & 0b111111;
-                            self.set_reg(inst.rd,
-                                ((rs1 as i64) >> shamt) as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd,
+                                "(int64_t)rs1 >> ((int64_t)rs2 & 0x3f)");
                         }
                         (0b0000000, 0b110) => {
                             // OR
-                            self.set_reg(inst.rd, rs1 | rs2);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 | rs2");
                         }
                         (0b0000000, 0b111) => {
                             // AND
-                            self.set_reg(inst.rd, rs1 & rs2);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "rs1 & rs2");
                         }
                         _ => unreachable!(),
                     }
@@ -2437,31 +2445,34 @@ extern "C" void start(struct _state *state) {
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADDW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_add(rs2) as i32 as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "(int32_t)rs1 + (int32_t)rs2");
                         }
                         (0b0100000, 0b000) => {
                             // SUBW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_sub(rs2) as i32 as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "(int32_t)rs1 - (int32_t)rs2");
                         }
                         (0b0000000, 0b001) => {
                             // SLLW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                (rs1 << shamt) as i32 as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "(uint32_t)rs1 << (rs2 & 0x1f)");
                         }
                         (0b0000000, 0b101) => {
                             // SRLW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                (rs1 >> shamt) as i32 as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd, "(uint32_t)rs1 >> (rs2 & 0x1f)");
                         }
                         (0b0100000, 0b101) => {
                             // SRAW
-                            let shamt = rs2 & 0b11111;
-                            self.set_reg(inst.rd,
-                                ((rs1 as i32) >> shamt) as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            get_reg!("auto rs2", inst.rs2);
+                            set_reg!(inst.rd,
+                                "(uint32_t)rs1 >> ((int32_t)rs2 & 0x1f)");
                         }
                         _ => unreachable!(),
                     }
@@ -2479,10 +2490,18 @@ extern "C" void start(struct _state *state) {
                 0b1110011 => {
                     if inst == 0b00000000000000000000000001110011 {
                         // ECALL
-                        return Err(VmExit::Syscall);
+                        program += &format!(r#"
+    state->exit_reason = Ecall;
+    state->reenter_pc = {:#x}ULL;
+    return;
+"#, pc.0);
                     } else if inst == 0b00000000000100000000000001110011 {
                         // EBREAK
-                        panic!("EBREAK");
+                        program += &format!(r#"
+    state->exit_reason = Ebreak;
+    state->reenter_pc = {:#x}ULL;
+    return;
+"#, pc.0);
                     } else {
                         unreachable!()
                     }
@@ -2497,8 +2516,9 @@ extern "C" void start(struct _state *state) {
                     match inst.funct3 {
                         0b000 => {
                             // ADDIW
-                            self.set_reg(inst.rd,
-                                rs1.wrapping_add(imm) as i32 as i64 as u64);
+                            get_reg!("auto rs1", inst.rs1);
+                            set_reg!(inst.rd, format!("(int32_t)rs1 + {}",
+                                inst.imm as i64));
                         }
                         0b001 => {
                             let mode = (inst.imm >> 5) & 0b1111111;
@@ -2507,8 +2527,10 @@ extern "C" void start(struct _state *state) {
                                 0b0000000 => {
                                     // SLLIW
                                     let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        (rs1 << shamt) as i32 as i64 as u64);
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd,
+                                        format!("(uint32_t)rs1 << {}",
+                                        shamt));
                                 }
                                 _ => unreachable!(),
                             }
@@ -2520,14 +2542,18 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SRLIW
                                     let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        (rs1 >> shamt) as i32 as i64 as u64);
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd,
+                                        format!("(uint32_t)rs1 >> {}",
+                                        shamt));
                                 }
                                 0b010000 => {
                                     // SRAIW
                                     let shamt = inst.imm & 0b11111;
-                                    self.set_reg(inst.rd,
-                                        ((rs1 as i32) >> shamt) as i64 as u64);
+                                    get_reg!("auto rs1", inst.rs1);
+                                    set_reg!(inst.rd,
+                                        format!("(int32_t)rs1 >> {}",
+                                        shamt));
                                 }
                                 _ => unreachable!(),
                             }
