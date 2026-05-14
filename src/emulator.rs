@@ -16,7 +16,7 @@ const ENABLE_TRACING: bool = false;
 
 /// Make sure this stays in sync with the C++ JIT version of this structure
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum ExitReason {
     None,
     IndirectBranch,
@@ -1120,6 +1120,14 @@ impl Emulator {
                 self.state.dirty        = dirty;
                 self.state.dirty_idx    = self.memory.dirty_len();
                 self.state.dirty_bitmap = dirty_bitmap;
+
+                // Update the PC reentry point
+                self.set_reg(Register::Pc, self.state.reenter_pc);
+
+                // Update the dirty state
+                self.memory.set_dirty_len(self.state.dirty_idx);
+ 
+                panic!("{:?}\n", self.state.exit_reason);
             }
 
             /*
