@@ -667,7 +667,8 @@ fn main() -> io::Result<()> {
     emu.add_breakpoint(VirtAddr(0x115bf4), realloc_bp);// offset _realloc_r
 
     // Set the program entry point
-    emu.set_reg(Register::Pc, 0x10980);
+//    emu.set_reg(Register::Pc, 0x10980);
+    emu.set_reg(Register::Pc, 0x0000000000114154);
 
     emu.test_jit().unwrap();
 
