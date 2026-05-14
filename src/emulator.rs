@@ -2745,6 +2745,7 @@ extern "C" void start(struct _state *state) {
             "-Wno-unused-label",
             //"-Wno-unused-variable",
             "-Werror",
+            "-fno-strict-aliasing",
             "-static", "-nostdlib","-ffreestanding",
             "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
             "-o", "./test",
