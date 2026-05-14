@@ -2085,7 +2085,7 @@ extern "C" void start(struct _state *state) {
         macro_rules! get_reg {
             ($expr:expr, $reg:expr) => {
                 if $reg == Register::Zero {
-                    program += &format!("    {} = 0ULL;\n", $expr);
+                    program += &format!("    {} = 0x0ULL;\n", $expr);
                 } else {
                     program += &format!("    {} = state->regs[{}];\n",
                         $expr, $reg as usize);
@@ -2106,7 +2106,7 @@ extern "C" void start(struct _state *state) {
         macro_rules! get_regw {
             ($expr:expr, $reg:expr) => {
                 if $reg == Register::Zero {
-                    program += &format!("    {} = 0U;\n", $expr);
+                    program += &format!("    {} = 0x0U;\n", $expr);
                 } else {
                     program +=
                         &format!("    {} = (uint32_t)state->regs[{}];\n",
@@ -2141,14 +2141,14 @@ extern "C" void start(struct _state *state) {
                     // LUI
                     let inst = Utype::from(inst);
                     set_reg!(inst.rd,
-                        &format!("{}ULL", inst.imm as i64 as u64));
+                        &format!("{:#x}ULL", inst.imm as i64 as u64));
                 }
                 0b0010111 => {
                     // AUIPC
                     let inst = Utype::from(inst);
                     let val =
                         (inst.imm as i64 as u64).wrapping_add(pc.0 as u64);
-                    set_reg!(inst.rd, format!("{}ULL", val));
+                    set_reg!(inst.rd, format!("{:#x}ULL", val));
                 }
                 0b1101111 => {
                     // JAL
@@ -2170,7 +2170,7 @@ extern "C" void start(struct _state *state) {
                             // JALR
                             let retaddr = pc.0.wrapping_add(4);
                             get_reg!("auto target", inst.rs1);
-                            program += &format!("    target += {}ULL;\n",
+                            program += &format!("    target += {:#x}ULL;\n",
                                 inst.imm as i64 as u64);
                             set_reg!(inst.rd, retaddr);
                             program +=
@@ -2237,7 +2237,7 @@ extern "C" void start(struct _state *state) {
 
                     // Compute the address
                     get_reg!("auto addr", inst.rs1);
-                    program += &format!("   addr += {}ULL;\n",
+                    program += &format!("   addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
                     // Check the bounds of the address and permissions
@@ -2276,7 +2276,7 @@ extern "C" void start(struct _state *state) {
 
                     // Compute the address
                     get_reg!("auto addr", inst.rs1);
-                    program += &format!("   addr += {}ULL;\n",
+                    program += &format!("   addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
                     // Check the bounds of the address and permissions
@@ -2312,39 +2312,39 @@ extern "C" void start(struct _state *state) {
                         0b000 => {
                             // ADDI
                             get_reg!("auto rs1", inst.rs1);
-                            set_reg!(inst.rd, format!("rs1 + {}ULL",
+                            set_reg!(inst.rd, format!("rs1 + {:#x}ULL",
                                 inst.imm as i64 as u64));
                         }
                         0b010 => {
                             // SLTI
                             get_reg!("auto rs1", inst.rs1);
                             set_reg!(inst.rd,
-                                format!("((int64_t)rs1 < {}LL) ? 1 : 0",
+                                format!("((int64_t)rs1 < {:#x}LL) ? 1 : 0",
                                 inst.imm as i64));
                         }
                         0b011 => {
                             // SLTIU
                             get_reg!("auto rs1", inst.rs1);
                             set_reg!(inst.rd,
-                                format!("((uint64_t)rs1 < {}ULL) ? 1 : 0",
+                                format!("((uint64_t)rs1 < {:#x}ULL) ? 1 : 0",
                                 inst.imm as i64 as u64));
                         }
                         0b100 => {
                             // XORI
                             get_reg!("auto rs1", inst.rs1);
-                            set_reg!(inst.rd, format!("rs1 ^ {}ULL",
+                            set_reg!(inst.rd, format!("rs1 ^ {:#x}ULL",
                                 inst.imm as i64 as u64));
                         }
                         0b110 => {
                             // ORI
                             get_reg!("auto rs1", inst.rs1);
-                            set_reg!(inst.rd, format!("rs1 | {}ULL",
+                            set_reg!(inst.rd, format!("rs1 | {:#x}ULL",
                                 inst.imm as i64 as u64));
                         }
                         0b111 => {
                             // ANDI
                             get_reg!("auto rs1", inst.rs1);
-                            set_reg!(inst.rd, format!("rs1 & {}ULL",
+                            set_reg!(inst.rd, format!("rs1 & {:#x}ULL",
                                 inst.imm as i64 as u64));
                         }
                         0b001 => {
