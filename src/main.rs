@@ -706,7 +706,7 @@ fn main() -> io::Result<()> {
     push!(arg1.0); // Argv
     push!(progname.0); // Argv
     push!(3u64); // Argc
-
+/*
     loop {
         // Run the emulator to a certain point
         let mut tmp = 0;
@@ -730,7 +730,7 @@ fn main() -> io::Result<()> {
             _ => break,
         }
     }
-
+*/
     print!("Took snapshot\n");
 
     // Wrap the original emulator in an `Arc`
