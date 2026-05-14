@@ -137,7 +137,7 @@ impl JitCache {
 
         // Compute the aligned size of code, this ensures we can do aligned
         // vector operations because we ensure alignment of loaded JITs
-        let align_size = (code.len() + 0xf) & !0xf;
+        let align_size = (code.len() + 0x3f) & !0x3f;
 
         // Number of remaining bytes in the JIT storage
         let jit_inuse = jit.1;
