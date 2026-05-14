@@ -455,13 +455,13 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             if let Some(input) = corpus.inputs.get(sel) {
                 emu.fuzz_input.extend_from_slice(input);
             }
-/*
+
             if emu.fuzz_input.len() > 0 {
                 for _ in 0..rng.rand() % 16 {
                     let sel = rng.rand() % emu.fuzz_input.len();
                     emu.fuzz_input[sel] = rng.rand() as u8;
                 }
-            }*/
+            }
 
             let vmexit = loop {
                 let vmexit = emu.run(&mut run_instrs,
@@ -567,6 +567,7 @@ fn calloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
 }
 
 fn realloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
+    panic!("Realoc HIT");
     let old_alc = VirtAddr(emu.reg(Register::A1) as usize);
     let size    = emu.reg(Register::A2) as usize;
 
@@ -771,8 +772,8 @@ fn main() -> io::Result<()> {
                     let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
                     let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
 
-                    print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
-                                fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
+                    print!("[{:3.4}] cases {:3} | crashes {:3} | unique crashs {:3} | \
+                                fcps {:3.1} | code {:3} | Minst/sec {:3.1} | \
                                 reset {:8.4} | vm {:8.4}\n",
                         elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
                         fuzz_cases as f64 / elapsed,
