@@ -2295,6 +2295,8 @@ extern "C" void start(struct _state *state) {
             // Create the instruction start label
             program += &format!("inst_{:016x}: {{\n", pc.0);
 
+            print!("Lifting {:#x?}\n", pc);
+
             if ENABLE_TRACING {
                 program += &format!(r#"
     if (state->trace_idx >= state->trace_len) {{
@@ -2309,7 +2311,14 @@ extern "C" void start(struct _state *state) {
 "#, pc.0);
             }
 
-            print!("Lifting {:#x?}\n", pc);
+            // Insert breakpoint if needed
+            if self.breakpoints.contains_key(&pc) {
+                program += &format!(r#"
+    state->exit_reason = Breakpoint;
+    state->reenter_pc = {:#x};
+    return;
+"#, pc.0);
+            }
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
