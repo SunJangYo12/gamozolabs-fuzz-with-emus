@@ -2295,7 +2295,7 @@ extern "C" void start(struct _state *state) {
             // Create the instruction start label
             program += &format!("inst_{:016x}: {{\n", pc.0);
 
-            print!("Lifting {:#x?}\n", pc);
+            print!("Lifting {:x?}\n", pc);
 
             if ENABLE_TRACING {
                 program += &format!(r#"
@@ -2799,7 +2799,7 @@ extern "C" void start(struct _state *state) {
 
         // Create the ELF
         let res = Command::new("clang++").args(&[
-            "-O3", "-Wall",
+            "-march=native", "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables",
             "-Wno-unused-label",
             "-Wno-unused-variable",
