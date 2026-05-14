@@ -1132,6 +1132,9 @@ impl Emulator {
             self.state.dirty        = dirty;
             self.state.dirty_idx    = self.memory.dirty_len();
             self.state.dirty_bitmap = dirty_bitmap;
+            self.state.trace_buffer = self.trace.as_ptr() as usize;
+            self.state.trace_idx    = self.trace.len();
+            self.state.trace_len    = self.trace.capacity();
 
             let jit_cache = self.jit_cache.as_ref().unwrap();
 
@@ -1163,6 +1166,9 @@ impl Emulator {
             self.set_reg(Register::Pc, self.state.reenter_pc);
 
             unsafe {
+                // Update trace length
+                self.trace.set_len(self.state.trace_idx);
+
                 // Update the dirty state
                 self.memory.set_dirty_len(self.state.dirty_idx);
             }
@@ -1252,6 +1258,9 @@ impl Emulator {
                 inout("r15")  instcount,
                 );
                 *vm_cycles += rdtsc() - it;
+
+                // Update trace length, gak ada divideo
+                self.trace.set_len(scratchpad[1]);
 
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, reentry_pc);
@@ -2217,7 +2226,7 @@ struct _state {
     size_t     dirty_idx;
     uint8_t   *dirty_bitmap;
 
-    uint64_t (*trace_buffer)[33];
+    uint64_t *trace_buffer;
     size_t   trace_idx;
     size_t   trace_len;
 };
@@ -2293,7 +2302,7 @@ extern "C" void start(struct _state *state) {
     }}
     //just memcpy
     for (int ii=0; ii<33; ii++) {{
-        state->trace_buffer[state->trace_idx][ii] = state->regs[ii];
+        state->trace_buffer[state->trace_idx * 33 + ii] = state->regs[ii];
     }}
     state->trace_idx++;
 "#);
