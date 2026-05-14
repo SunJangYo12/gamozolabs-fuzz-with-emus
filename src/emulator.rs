@@ -14,6 +14,32 @@ use crate::Corpus;
 /// instruction. This is INCREDIBLY slow and should only be used for debugging
 const ENABLE_TRACING: bool = false;
 
+/// Make sure this stays in sync with the C++ JIT version of this structure
+#[repr(C)]
+#[derive(Clone, Copy)]
+enum ExitReason {
+    None,
+    IndirectBranch,
+    ReadFault,
+    WriteFault,
+    Ecall,
+    Ebreak,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct GuestState {
+    exit_reason:  ExitReason,
+    reenter_pc:   u64,
+    regs:         [u64; 33],
+    memory:       usize,
+    permissions:  usize,
+    memory_len:   usize,
+    dirty:        usize,
+    dirty_idx:    usize,
+    dirty_bitmap: usize,
+}
+
 /// 64-bit RISC-V registers
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(usize)]
@@ -386,7 +412,7 @@ pub struct Emulator {
     pub memory: Mmu,
 
     /// All RV64i registers
-    registers: [u64; 33],
+    state: GuestState,
 
     /// Fuzz input for the program
     pub fuzz_input: Vec<u8>,
@@ -410,8 +436,18 @@ impl Emulator {
     pub fn new(size: usize) -> Self {
         assert!(size >= 8, "Must have at least 8 bytes of memory");
         Emulator {
-            memory:     Mmu::new(size),
-            registers:  [0; 33],
+            memory: Mmu::new(size),
+            state:  GuestState {
+                exit_reason: ExitReason::None,
+                reenter_pc:   0,
+                regs:         [0; 33],
+                memory:       0,
+                permissions:  0,
+                memory_len:   0,
+                dirty:        0,
+                dirty_idx:    0,
+                dirty_bitmap: 0,
+            },
             fuzz_input: Vec::new(),
             files: Files(vec![
                 Some(EmuFile::Stdin),
@@ -429,7 +465,7 @@ impl Emulator {
     pub fn fork(&self) -> Self {
         Emulator {
             memory:      self.memory.fork(),
-            registers:   self.registers.clone(),
+            state:       self.state.clone(),
             fuzz_input:  self.fuzz_input.clone(),
             files:       self.files.clone(),
             jit_cache:   self.jit_cache.clone(),
@@ -458,7 +494,7 @@ impl Emulator {
             let mut tracestr = String::new();
             let mut pctracestr = String::new();
             for trace in &self.trace {
-                self.registers = *trace;
+                self.state.regs = *trace;
 
                 tracestr += &format!("{}\n", self);
                 pctracestr += &format!("{:x}\n", self.reg(Register::Pc));
@@ -477,7 +513,7 @@ impl Emulator {
         self.memory.reset(&other.memory);
 
         // Reset register state
-        self.registers = other.registers;
+        self.state.regs = other.state.regs;
 
         // Reset file state
         self.files.0.clear();
@@ -501,7 +537,7 @@ impl Emulator {
     /// Get a register from the guest
     pub fn reg(&self, register: Register) -> u64 {
         if register != Register::Zero {
-            self.registers[register as usize]
+            self.state.regs[register as usize]
         }
         else {
             0
@@ -511,7 +547,7 @@ impl Emulator {
     /// Set a register from the guest
     pub fn set_reg(&mut self, register: Register, val: u64) {
         if register != Register::Zero {
-            self.registers[register as usize] = val;
+            self.state.regs[register as usize] = val;
         }
     }
 
@@ -1101,7 +1137,7 @@ impl Emulator {
                 in("r10")     dirty,
                 in("r11")     dirty_bitmap,
                 inout("r12")  dirty_inuse => new_dirty_inuse,
-                in("r13")     self.registers.as_ptr(),
+                in("r13")     self.state.regs.as_ptr(),
                 in("r14")     trans_table,
                 inout("r15")  instcount,
                 );
@@ -2048,6 +2084,7 @@ r#"
 #include <stdint.h>
 
 enum _vmexit {
+    None,
     IndirectBranch,
     ReadFault,
     WriteFault,
