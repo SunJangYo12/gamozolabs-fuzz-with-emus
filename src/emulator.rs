@@ -2116,7 +2116,10 @@ extern "C" void start(struct _state *state) {
         }
 
         while let Some(pc) = queued.pop_front() {
-            assert!(visited.insert(pc), "Whoa, duplicate queued PC");
+            if !visited.insert(pc) {
+                // Already JITed this PC
+                continue;
+            }
 
             // Check alignment
             if pc.0 & 3 != 0 {
@@ -2289,7 +2292,7 @@ extern "C" void start(struct _state *state) {
     }}
 
     // Enable reads for memory with RAW set
-    auto perms = (*({}*)(state->permissions + addr);
+    auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
     *({}*)(state->permissions + addr) |= perms >= 3;
 
