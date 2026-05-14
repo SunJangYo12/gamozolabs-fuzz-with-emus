@@ -1112,26 +1112,31 @@ impl Emulator {
                         VirtAddr(pc as usize), &tmp)
                 }
             };
+
+            // Set up the JIT state
+            self.state.memory       = memory;
+            self.state.permissions  = perms;
+            self.state.memory_len   = self.memory.len();
+            self.state.dirty        = dirty;
+            self.state.dirty_idx    = self.memory.dirty_len();
+            self.state.dirty_bitmap = dirty_bitmap;
+
+            loop {
+                unsafe {
+                    // Create a function pointer to the JIT
+                    let func =
+                        *(&jit_addr as *const usize as *const fn(&mut GuestState));
+                    func(&mut self.state);
+     
+                    panic!("{:?} {:#x}", self.state.exit_reason, self.state.reenter_pc);
+                }
+            }
+            // Update the PC reentry point
+            self.set_reg(Register::Pc, self.state.reenter_pc);
+
             unsafe {
-                // Invoke the JIT c++
-                self.state.memory       = memory;
-                self.state.permissions  = perms;
-                self.state.memory_len   = self.memory.len();
-                self.state.dirty        = dirty;
-                self.state.dirty_idx    = self.memory.dirty_len();
-                self.state.dirty_bitmap = dirty_bitmap;
-
-                let func =
-                    *(&jit_addr as *const usize as *const fn(&mut GuestState));
-                func(&mut self.state);
-
-                // Update the PC reentry point
-                self.set_reg(Register::Pc, self.state.reenter_pc);
-
                 // Update the dirty state
                 self.memory.set_dirty_len(self.state.dirty_idx);
- 
-                panic!("{:?} {:#x}", self.state.exit_reason, self.state.reenter_pc);
             }
 
             /*
