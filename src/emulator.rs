@@ -2053,6 +2053,8 @@ enum _vmexit {
     IndirectBranch,
     ReadFault,
     WriteFault,
+    Ecall,
+    Ebreak,
 };
 
 struct _state {
@@ -2083,9 +2085,31 @@ extern "C" void start(struct _state *state) {
         macro_rules! get_reg {
             ($expr:expr, $reg:expr) => {
                 if $reg == Register::Zero {
-                    program += &format!("    {} = 0;\n", $expr);
+                    program += &format!("    {} = 0ULL;\n", $expr);
                 } else {
                     program += &format!("    {} = state->regs[{}];\n",
+                        $expr, $reg as usize);
+                }
+            }
+        }
+
+        macro_rules! set_regw {
+            ($reg:expr, $expr:expr) => {
+                if $reg != Register::Zero {
+                    program +=
+                        &format!("    state->regs[{}] = (int32_t)({});\n",
+                        $reg as usize, $expr);
+                }
+            }
+        }
+
+        macro_rules! get_regw {
+            ($expr:expr, $reg:expr) => {
+                if $reg == Register::Zero {
+                    program += &format!("    {} = 0U;\n", $expr);
+                } else {
+                    program +=
+                        &format!("    {} = (uint32_t)state->regs[{}];\n",
                         $expr, $reg as usize);
                 }
             }
@@ -2439,33 +2463,34 @@ extern "C" void start(struct _state *state) {
                     match (inst.funct7, inst.funct3) {
                         (0b0000000, 0b000) => {
                             // ADDW
-                            get_reg!("auto rs1", inst.rs1);
-                            get_reg!("auto rs2", inst.rs2);
-                            set_reg!(inst.rd, "(int32_t)rs1 + (int32_t)rs2");
+                            get_regw!("auto rs1", inst.rs1);
+                            get_regw!("auto rs2", inst.rs2);
+                            set_regw!(inst.rd, "rs1 + rs2");
                         }
                         (0b0100000, 0b000) => {
                             // SUBW
-                            get_reg!("auto rs1", inst.rs1);
-                            get_reg!("auto rs2", inst.rs2);
-                            set_reg!(inst.rd, "(int32_t)rs1 - (int32_t)rs2");
+                            get_regw!("auto rs1", inst.rs1);
+                            get_regw!("auto rs2", inst.rs2);
+                            set_regw!(inst.rd, "rs1 - rs2");
                         }
                         (0b0000000, 0b001) => {
                             // SLLW
-                            get_reg!("auto rs1", inst.rs1);
-                            get_reg!("auto rs2", inst.rs2);
-                            set_reg!(inst.rd, "(uint32_t)rs1 << (rs2 & 0x1f)");
+                            get_regw!("auto rs1", inst.rs1);
+                            get_regw!("auto rs2", inst.rs2);
+                            set_regw!(inst.rd,
+                                "(uint32_t)rs1 << (rs2 & 0x1f)");
                         }
                         (0b0000000, 0b101) => {
                             // SRLW
-                            get_reg!("auto rs1", inst.rs1);
-                            get_reg!("auto rs2", inst.rs2);
-                            set_reg!(inst.rd, "(uint32_t)rs1 >> (rs2 & 0x1f)");
+                            get_regw!("auto rs1", inst.rs1);
+                            get_regw!("auto rs2", inst.rs2);
+                            set_regw!(inst.rd, "rs1 >> (rs2 & 0x1f)");
                         }
                         (0b0100000, 0b101) => {
                             // SRAW
-                            get_reg!("auto rs1", inst.rs1);
-                            get_reg!("auto rs2", inst.rs2);
-                            set_reg!(inst.rd,
+                            get_regw!("auto rs1", inst.rs1);
+                            get_regw!("auto rs2", inst.rs2);
+                            set_regw!(inst.rd,
                                 "(uint32_t)rs1 >> ((int32_t)rs2 & 0x1f)");
                         }
                         _ => unreachable!(),
@@ -2507,9 +2532,9 @@ extern "C" void start(struct _state *state) {
                     match inst.funct3 {
                         0b000 => {
                             // ADDIW
-                            get_reg!("auto rs1", inst.rs1);
-                            set_reg!(inst.rd, format!("(int32_t)rs1 + {}",
-                                inst.imm as i64));
+                            get_regw!("auto rs1", inst.rs1);
+                            set_regw!(inst.rd, format!("(int32_t)rs1 + {}U",
+                                inst.imm as i64 as u32));
                         }
                         0b001 => {
                             let mode = (inst.imm >> 5) & 0b1111111;
@@ -2518,9 +2543,9 @@ extern "C" void start(struct _state *state) {
                                 0b0000000 => {
                                     // SLLIW
                                     let shamt = inst.imm & 0b11111;
-                                    get_reg!("auto rs1", inst.rs1);
-                                    set_reg!(inst.rd,
-                                        format!("(uint32_t)rs1 << {}",
+                                    get_regw!("auto rs1", inst.rs1);
+                                    set_regw!(inst.rd,
+                                        format!("rs1 << {}",
                                         shamt));
                                 }
                                 _ => unreachable!(),
@@ -2533,17 +2558,17 @@ extern "C" void start(struct _state *state) {
                                 0b000000 => {
                                     // SRLIW
                                     let shamt = inst.imm & 0b11111;
-                                    get_reg!("auto rs1", inst.rs1);
-                                    set_reg!(inst.rd,
-                                        format!("(uint32_t)rs1 >> {}",
+                                    get_regw!("auto rs1", inst.rs1);
+                                    set_regw!(inst.rd,
+                                        format!("rs1 >> {}",
                                         shamt));
                                 }
                                 0b010000 => {
                                     // SRAIW
                                     let shamt = inst.imm & 0b11111;
-                                    get_reg!("auto rs1", inst.rs1);
-                                    set_reg!(inst.rd,
-                                        format!("(int32_t)rs1 >> {}",
+                                    get_regw!("auto rs1", inst.rs1);
+                                    set_regw!(inst.rd,
+                                        format!("rs1 >> {}",
                                         shamt));
                                 }
                                 _ => unreachable!(),
