@@ -2291,7 +2291,11 @@ extern "C" void start(struct _state *state) {
     if (state->trace_idx >= state->trace_len) {{
         __builtin_trap();
     }}
-    state->trace_buffer[state->trace_idx++] = state->regs;
+    //just memcpy
+    for (int ii=0; ii<33; ii++) {{
+        state->trace_buffer[state->trace_idx][ii] = state->regs[ii];
+    }}
+    state->trace_idx++;
 "#);
             }
 
