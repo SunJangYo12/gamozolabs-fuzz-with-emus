@@ -1121,6 +1121,10 @@ impl Emulator {
                 self.state.dirty_idx    = self.memory.dirty_len();
                 self.state.dirty_bitmap = dirty_bitmap;
 
+                let func =
+                    *(&jit_addr as *const usize as *const fn(&mut GuestState));
+                func(&mut self.state);
+
                 // Update the PC reentry point
                 self.set_reg(Register::Pc, self.state.reenter_pc);
 
