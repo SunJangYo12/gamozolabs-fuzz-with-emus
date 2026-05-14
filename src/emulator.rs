@@ -2481,6 +2481,9 @@ extern "C" void start(struct _state *state) {
     "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
         raw_mask, storetyp, DIRTY_BLOCK_SIZE);
 
+                    // Write the memory!
+                    get_reg!(format!("*({}*)(state->memory + addr)",
+                        storetyp), inst.rs2);
                 }
                 0b0010011 => {
                     // We know it's an Itype
@@ -2776,7 +2779,7 @@ extern "C" void start(struct _state *state) {
             "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables",
             "-Wno-unused-label",
-            //"-Wno-unused-variable",
+            "-Wno-unused-variable",
             "-Werror",
             "-fno-strict-aliasing",
             "-static", "-nostdlib","-ffreestanding",
