@@ -2301,11 +2301,12 @@ extern "C" void start(struct _state *state) {
         __builtin_trap();
     }}
     //just memcpy
-    for (int ii=0; ii<33; ii++) {{
+    for (int ii=0; ii<32; ii++) {{
         state->trace_buffer[state->trace_idx * 33 + ii] = state->regs[ii];
     }}
+    state->trace_buffer[state->trace_idx * 33 + 32] = {:#x}ULL;
     state->trace_idx++;
-"#);
+"#, pc.0);
             }
 
             print!("Lifting {:#x?}\n", pc);
