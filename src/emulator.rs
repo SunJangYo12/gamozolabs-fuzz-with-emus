@@ -1047,12 +1047,10 @@ impl Emulator {
                 if let Some(jit_addr) = jit_addr {
                     jit_addr
                 } else {
-                    // Go through each instruction in the block, and accumulate an
-                    // assembly string which we will assembly using `nasm` on the
-                    // command line
-                    let asm = 
-                        self.generate_jit(VirtAddr(pc as usize), num_blocks, corpus)?;
+                    // Generate the JIT for this PC
+                    let tmp = self.test_jit(VirtAddr(pc as usize))?;
 
+                    /*
                     // Write out the assembly
                     let asmfn = std::env::temp_dir().join(
                         format!("fwetmp_{:?}.asm", std::thread::current().id()));
@@ -1071,6 +1069,7 @@ impl Emulator {
                     // Read the binary
                     let tmp = std::fs::read(&binfn)
                         .expect("Failed to read nasm output");
+                    */
 
                     // Update the JIT tables
                     self.jit_cache.as_ref().unwrap().add_mapping(
@@ -2035,13 +2034,12 @@ impl Emulator {
     }
 
     // Run the VM using the emulator
-    pub fn test_jit(&mut self) -> Result<(), VmExit> {
+    pub fn test_jit(&mut self, pc: VirtAddr) -> Result<Vec<u8>, VmExit> {
         let mut visited = BTreeSet::new();
         let mut queued = VecDeque::new();
 
-        // Get the current program counter and insert it into the queue
-        let pc = self.reg(Register::Pc);
-        queued.push_back(VirtAddr(pc as usize));
+        // Insert the program counter into the queue
+        queued.push_back(pc);
 
         let mut program = String::new();
         program +=
@@ -2617,7 +2615,7 @@ extern "C" void start(struct _state *state) {
             .expect("Failed to launch objcopy");
         assert!(res.success(), "objcopy returned error");
 
-        Ok(())
+        Ok(std::fs::read("test.bin").expect("Failed to read JIT code"))
     }
 }
 
