@@ -12,7 +12,7 @@ use crate::Corpus;
 
 /// If set, all register state will be saved before the exection of every
 /// instruction. This is INCREDIBLY slow and should only be used for debugging
-const ENABLE_TRACING: bool = false;
+const ENABLE_TRACING: bool = true;
 
 /// Make sure this stays in sync with the C++ JIT version of this structure
 #[repr(C)]
@@ -41,6 +41,9 @@ struct GuestState {
     dirty:        usize,
     dirty_idx:    usize,
     dirty_bitmap: usize,
+    trace_buffer: usize,
+    trace_idx:    usize,
+    trace_len:    usize,
 }
 
 /// 64-bit RISC-V registers
@@ -453,6 +456,9 @@ impl Emulator {
                 dirty:        0,
                 dirty_idx:    0,
                 dirty_bitmap: 0,
+                trace_buffer: 0,
+                trace_idx:    0,
+                trace_len:    0,
             },
             fuzz_input: Vec::new(),
             files: Files(vec![
@@ -2210,6 +2216,10 @@ struct _state {
     uintptr_t *dirty;
     size_t     dirty_idx;
     uint8_t   *dirty_bitmap;
+
+    uint64_t (*trace_buffer)[33];
+    size_t   trace_idx;
+    size_t   trace_len;
 };
 
 extern "C" void start(struct _state *state) {
@@ -2275,6 +2285,15 @@ extern "C" void start(struct _state *state) {
 
             // Create the instruction start label
             program += &format!("inst_{:016x}: {{\n", pc.0);
+
+            if ENABLE_TRACING {
+                program += &format!(r#"
+    if (state->trace_idx >= state->trace_len) {{
+        __builtin_trap();
+    }}
+    state->trace_buffer[state->trace_idx++] = state->regs;
+"#);
+            }
 
             print!("Lifting {:#x?}\n", pc);
 
