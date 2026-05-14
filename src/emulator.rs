@@ -1112,7 +1112,17 @@ impl Emulator {
                         VirtAddr(pc as usize), &tmp)
                 }
             };
+            unsafe {
+                // Invoke the JIT c++
+                self.state.memory       = memory;
+                self.state.permissions  = perms;
+                self.state.memory_len   = self.memory.len();
+                self.state.dirty        = dirty;
+                self.state.dirty_idx    = self.memory.dirty_len();
+                self.state.dirty_bitmap = dirty_bitmap;
+            }
 
+            /*
             unsafe {
                 // Invoke the jit
                 let exit_code : u64;
@@ -1202,7 +1212,7 @@ impl Emulator {
                     }
                     _ => unreachable!(),
                 }
-            }
+            }*/
         }
     }
 
