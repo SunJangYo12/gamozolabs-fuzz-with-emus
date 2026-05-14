@@ -1131,7 +1131,7 @@ impl Emulator {
                 // Update the dirty state
                 self.memory.set_dirty_len(self.state.dirty_idx);
  
-                panic!("{:?}\n", self.state.exit_reason);
+                panic!("{:?} {:#x}", self.state.exit_reason, self.state.reenter_pc);
             }
 
             /*
