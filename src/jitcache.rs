@@ -103,6 +103,7 @@ impl JitCache {
     }
 
     /// Look up the JIT address for a given guest address
+    #[inline]
     pub fn lookup(&self, addr: VirtAddr) -> Option<usize> {
         // Make sure the address is aligned
         if addr.0 & 3 != 0 {

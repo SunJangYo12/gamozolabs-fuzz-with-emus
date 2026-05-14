@@ -16,7 +16,7 @@ const ENABLE_TRACING: bool = false;
 
 /// Make sure this stays in sync with the C++ JIT version of this structure
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ExitReason {
     None,
     IndirectBranch,
@@ -24,6 +24,9 @@ enum ExitReason {
     WriteFault,
     Ecall,
     Ebreak,
+    Timeout,
+    Breakpoint,
+    InvalidOpcode,
 }
 
 #[repr(C)]
@@ -96,6 +99,9 @@ impl From<u32> for Register {
 pub enum VmExit {
     /// The VM exited due to a syscall intruction
     Syscall,
+
+    /// A RISC-V software breakpoint instruction was hit
+    Ebreak,
 
     /// The vm exited cleanly as requested by the VM
     Exit,
@@ -1066,7 +1072,7 @@ impl Emulator {
         let mut override_jit_addr = None;
 
         loop {
-            let jit_addr = if let Some(override_jit_addr) =
+            let mut jit_addr = if let Some(override_jit_addr) =
                     override_jit_addr.take() {
                 override_jit_addr
             } else {
@@ -1121,14 +1127,30 @@ impl Emulator {
             self.state.dirty_idx    = self.memory.dirty_len();
             self.state.dirty_bitmap = dirty_bitmap;
 
-            loop {
+            let jit_cache = self.jit_cache.as_ref().unwrap();
+
+            'quick_reenter: loop {
                 unsafe {
                     // Create a function pointer to the JIT
                     let func =
                         *(&jit_addr as *const usize as *const fn(&mut GuestState));
                     func(&mut self.state);
-     
-                    panic!("{:?} {:#x}", self.state.exit_reason, self.state.reenter_pc);
+
+                    // Quickly check if this is an indirect branch
+                    if self.state.exit_reason == ExitReason::IndirectBranch {
+                        // Check if we already know the JIT address of the
+                        // branch target
+                        if let Some(ent) =
+                                jit_cache.lookup(
+                                    VirtAddr(self.state.reenter_pc as usize)) {
+                            jit_addr = ent;
+                            continue 'quick_reenter;
+                        }
+                    }
+
+                    // Either it was not an indirect branch, or we need
+                    // to lift the target
+                    break 'quick_reenter;
                 }
             }
             // Update the PC reentry point
@@ -1137,6 +1159,61 @@ impl Emulator {
             unsafe {
                 // Update the dirty state
                 self.memory.set_dirty_len(self.state.dirty_idx);
+            }
+
+            match self.state.exit_reason {
+                ExitReason::None => unreachable!(),
+                ExitReason::IndirectBranch => {
+                    // Just fall through to translate to JIT
+                }
+                ExitReason::Ebreak => {
+                    // RISC-V breakpoint instruction
+                    return Err(VmExit::Ebreak);
+                }
+                ExitReason::Ecall => {
+                    // Syscall
+                    return Err(VmExit::Syscall);
+                }
+                ExitReason::ReadFault => {
+                    // Read fault
+                    // The JIT reports the address of the base of the
+                    // access, invoke the emulator to get the specific
+                    // byte which caused the fault
+                    return self.run_emu(instrs_execed, corpus);
+                }
+                ExitReason::WriteFault => {
+                    // Write fault
+                    // The JIT reports the address of the base of the
+                    // access, invoke the emulator to get the specific
+                    // byte which caused the fault
+                    return self.run_emu(instrs_execed, corpus)
+                }
+                ExitReason::Timeout => {
+                    // Hit the instruction count timeout
+                    return Err(VmExit::Timeout);
+                }
+                ExitReason::Breakpoint => {
+                    // Hit breakpoint, invoke callback
+                    let pc = VirtAddr(self.state.reenter_pc as usize);
+                    if let Some(callback) = self.breakpoints.get(&pc) {
+                        callback(self)?;
+                    }
+
+                    if self.reg(Register::Pc) == self.state.reenter_pc {
+                        // Force execution at the return location, which
+                        // will skip over the breakpoint return
+                        panic!("WAT");
+                    } else {
+                        // PC was changed by the breakpoint handler,
+                        // thus we respect its change and will jump
+                        // to the target it specified
+                    }
+                }
+                ExitReason::InvalidOpcode => {
+                    // An invalid opcode was executed
+                    return Err(VmExit::InvalidOpcode);
+                }
+                _ => unreachable!(),
             }
 
             /*
@@ -2117,6 +2194,9 @@ enum _vmexit {
     WriteFault,
     Ecall,
     Ebreak,
+    Timeout,
+    Breakpoint,
+    InvalidOpcode,
 };
 
 struct _state {
