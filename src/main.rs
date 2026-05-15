@@ -771,8 +771,8 @@ fn main() -> io::Result<()> {
                     let resetc = stats.reset_cycles as f64 / stats.total_cycles as f64;
                     let vmc    = stats.vm_cycles    as f64 / stats.total_cycles as f64;
 
-                    print!("[{:10.4}] cases {:10} | crashes {:10} | unique crashs {:10}\n\
-                                fcps {:10.1} | code cov {:10} | Minst/sec {:10.1}\n\
+                    print!("[{:10.4}] cases {:5} | crashes {:3} | unique crashs {:3} | \
+                                fcps {:10.1} | code {:3} | Minst/sec {:3.1} | \
                                 reset {:8.4} | vm {:8.4}\n",
                         elapsed, fuzz_cases, stats.crashes, corpus.unique_crashes.len(),
                         fuzz_cases as f64 / elapsed,
