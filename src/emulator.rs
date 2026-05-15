@@ -12,7 +12,7 @@ use crate::Corpus;
 
 /// If set, all register state will be saved before the exection of every
 /// instruction. This is INCREDIBLY slow and should only be used for debugging
-const ENABLE_TRACING: bool = true;
+const ENABLE_TRACING: bool = false;
 
 /// Make sure this stays in sync with the C++ JIT version of this structure
 #[repr(C)]
@@ -2315,7 +2315,7 @@ extern "C" void start(struct _state *state) {
             if self.breakpoints.contains_key(&pc) {
                 program += &format!(r#"
     state->exit_reason = Breakpoint;
-    state->reenter_pc  = {:#x};
+    state->reenter_pc  = {:#x}ULL;
     return;
 "#, pc.0);
             }
@@ -2343,8 +2343,24 @@ extern "C" void start(struct _state *state) {
                     let retaddr = pc.0.wrapping_add(4);
                     let target  = pc.0.wrapping_add(inst.imm as i64 as usize);
                     set_reg!(inst.rd, retaddr);
-                    program += &format!("goto inst_{:016x};\n", target);
-                    queued.push_back(VirtAddr(target));
+
+                    if inst.rd == Register::Zero {
+                        // Unconditional branch == jal with an rd = zero
+                        program += &format!("goto inst_{:016x};\n", target);
+                        queued.push_back(VirtAddr(target));
+                    } else {
+                        // Function call, treat as an indirect branch to
+                        // avoid inlining boatloads of function calls
+                        // their parents.
+                        program +=
+                            "   state->exit_reason = IndirectBranch;\n";
+                        program +=
+                            &format!("   state->reenter_pc = {:#x}ULL;\n",
+                                target);
+                        program +=
+                            "   return;\n";
+                    }
+
                     program += "}\n";
                     continue;
                 }
