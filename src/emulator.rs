@@ -597,7 +597,7 @@ impl Emulator {
 
             // bug for my pc, frezzzzz
             if ENABLE_TRACING {
-                self.trace.push(self.state.regs);
+                //self.trace.push(self.state.regs);
             }
 
             // Update code coverage
@@ -2446,6 +2446,7 @@ extern "C" void start(struct _state *state) {
                     program += &format!("   addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
+                    /*
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
     if (addr > state->memory_len - sizeof({}) ||
@@ -2454,7 +2455,7 @@ extern "C" void start(struct _state *state) {
         state->reenter_pc = {:#x}ULL;
         return;
     }}
-    "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
+    "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);*/
 
                     set_reg!(inst.rd, format!("*({}*)(state->memory + addr)",
                         loadtyp));
@@ -2487,6 +2488,7 @@ extern "C" void start(struct _state *state) {
 
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
+    /*
     if (addr > state->memory_len - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = WriteFault;
@@ -2497,7 +2499,7 @@ extern "C" void start(struct _state *state) {
     // Enable reads for memory with RAW set
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
-    *({}*)(state->permissions + addr) |= perms >= 3;
+    *({}*)(state->permissions + addr) |= perms >= 3;*/
 
     auto block = addr / {};
     auto idx   = block / 64;
@@ -2804,7 +2806,8 @@ extern "C" void start(struct _state *state) {
 
         // Create the ELF
         let res = Command::new("clang++").args(&[
-            "-march=native", "-O3", "-Wall",
+            "-march=native",
+            "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables",
             "-Wno-unused-label",
             "-Wno-unused-variable",
