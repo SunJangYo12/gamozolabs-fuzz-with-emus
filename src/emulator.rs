@@ -2502,13 +2502,19 @@ extern "C" void start(struct _state *state) {
     *({}*)(state->permissions + addr) |= perms >= 3;*/
 
     auto block = addr / {};
+    uint64_t trash;
     asm(
         "bts %[block], %[_BitBase]\n\t"
         "jc 2f\n\t"
+        "movq %[dirty_idx], %[scratch]\n\t"
+        "movq %[block], (%[dirty], %[scratch])\n\t"
+        "add 1, %[dirty_idx]\n\t"
         "2:\n\t"
-        :
-        : [_BitBase] "m" (*state->dirty_bitmap), [block] "r" (block)
-        : "cc" // clobber condition code
+        : [scratch] "=r" (trash)
+        : [_BitBase] "m" (*state->dirty_bitmap), [block] "r" (block),
+          [dirty] "r" (state->dirty),
+          [dirty_idx] "r" (state->dirty_idx)
+        : "cc", "memory" // clobber condition code
     );
     "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
         raw_mask, storetyp, DIRTY_BLOCK_SIZE);
