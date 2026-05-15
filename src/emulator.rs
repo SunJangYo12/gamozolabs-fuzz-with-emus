@@ -2508,12 +2508,12 @@ extern "C" void start(struct _state *state) {
         "jc 2f\n\t"
         "movq %[dirty_idx], %[scratch]\n\t"
         "movq %[block], (%[dirty], %[scratch])\n\t"
-        "add 1, %[dirty_idx]\n\t"
+        "addq $1, %[dirty_idx]\n\t"
         "2:\n\t"
-        : [scratch] "=r" (trash)
+        : [scratch] "=&r" (trash)
         : [_BitBase] "m" (*state->dirty_bitmap), [block] "r" (block),
           [dirty] "r" (state->dirty),
-          [dirty_idx] "r" (state->dirty_idx)
+          [dirty_idx] "m" (state->dirty_idx)
         : "cc", "memory" // clobber condition code
     );
     "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
