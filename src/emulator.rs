@@ -2224,19 +2224,19 @@ struct _state {
     uint64_t     reenter_pc;
 
     uint64_t   regs[33];
-    uint8_t   *memory;
-    uint8_t   *permissions;
-    size_t     memory_len;
-    uintptr_t *dirty;
+    uint8_t   *__restrict const memory;
+    uint8_t   *__restrict const permissions;
+    const size_t     memory_len;
+    uintptr_t *__restrict const dirty;
     size_t     dirty_idx;
-    uint8_t   *dirty_bitmap;
+    uint8_t   *__restrict const dirty_bitmap;
 
-    uint64_t *trace_buffer;
+    uint64_t *__restrict const trace_buffer;
     size_t   trace_idx;
-    size_t   trace_len;
+    const size_t   trace_len;
 };
 
-extern "C" void start(struct _state *state) {
+extern "C" void start(struct _state *__restrict state) {
 "#;
 
         macro_rules! set_reg {
@@ -2488,7 +2488,7 @@ extern "C" void start(struct _state *state) {
                         inst.imm as i64 as u64);
 
                     // Check the bounds of the address and permissions
-                    program += &format!(r#"
+                    //program += &format!(r#"
     /*
     if (addr > state->memory_len - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
@@ -2500,26 +2500,18 @@ extern "C" void start(struct _state *state) {
     // Enable reads for memory with RAW set
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
-    *({}*)(state->permissions + addr) |= perms >= 3;*/
-
+    *({}*)(state->permissions + addr) |= perms >> 3;*/
+/*
     auto block = addr / {};
-    uint64_t trash;
-    asm(
-        "bts %[block], %[_BitBase]\n\t"
-        "jc 2f\n\t"
-        "movq %[dirty_idx], %[scratch]\n\t"
-        "movq %[block], (%[dirty], %[scratch], 8)\n\t"
-        "addq $1, %[dirty_idx]\n\t"
-        "2:\n\t"
-        : [scratch] "=&r" (trash)
-        : [_BitBase] "m" (*state->dirty_bitmap), [block] "r" (block),
-          [dirty] "r" (state->dirty),
-          [dirty_idx] "m" (state->dirty_idx)
-        : "cc", "memory" // clobber condition code
-    );
+    auto idx   = block / 64;
+    auto bit   = 1 << (block % 64);
+    if ((state->dirty_bitmap[idx] & bit) == 0) {{
+         state->dirty[state->dirty_idx++] = block;
+    }}
+
     "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
         raw_mask, storetyp, DIRTY_BLOCK_SIZE);
-
+*/
                     // Write the memory!
                     get_reg!(format!("*({}*)(state->memory + addr)",
                         storetyp), inst.rs2);

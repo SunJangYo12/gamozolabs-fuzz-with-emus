@@ -77,7 +77,7 @@ fn handle_syscall(emu: &mut Emulator) -> Result<(), VmExit> {
     // Get the syscall number
     let num = emu.reg(Register::A7);
 
-    print!("Syscall {}\n", num);
+    //print!("Syscall {}\n", num);
 
     // All manual using eg. man 2 open, etc
     match num {
@@ -455,13 +455,13 @@ fn worker(mut emu: Emulator, original: Arc<Emulator>,
             if let Some(input) = corpus.inputs.get(sel) {
                 emu.fuzz_input.extend_from_slice(input);
             }
-
+            /*
             if emu.fuzz_input.len() > 0 {
                 for _ in 0..rng.rand() % 16 {
                     let sel = rng.rand() % emu.fuzz_input.len();
                     emu.fuzz_input[sel] = rng.rand() as u8;
                 }
-            }
+            }*/
 
             let vmexit = loop {
                 let vmexit = emu.run(&mut run_instrs,
