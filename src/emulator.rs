@@ -2362,6 +2362,7 @@ extern "C" void start(struct _state *state) {
                         program +=
                            &format!("    state->reenter_pc = {:#x}ULL;\n",
                                 target);
+                        program += "    return;\n";
                     }
 
                     program += "}\n";
