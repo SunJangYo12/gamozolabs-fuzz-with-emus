@@ -2798,6 +2798,13 @@ extern "C" void start(struct _state *__restrict state) {
         // Close the function scope
         program += "}\n";
 
+        let cppfn = std::env::temp_dir().join(
+            format!("fwetmp_{:?}.cpp", std::thread::current().id()));
+        let linkfn = std::env::temp_dir().join(
+            format!("fwetmp_{:?}.lunk", std::thread::current().id()));
+        let binfn = std::env::temp_dir().join(
+            format!("fwetmp_{:?}.bin", std::thread::current().id()));
+        
         // Write out the test program
         std::fs::write("program.cpp", program)
             .expect("Failed to write program");
@@ -2813,18 +2820,19 @@ extern "C" void start(struct _state *__restrict state) {
             //"-fno-strict-aliasing",
             "-static", "-nostdlib","-ffreestanding",
             "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
-            "-o", "./test",
-            "./program.cpp"]).status()
+            "-o", linkfn.to_str().unwrap(),
+            cppfn.to_str().unwrap()]).status()
             .expect("Failed to launch c++");
         assert!(res.success(), "clang++ returned error");
 
         // Convert the ELF a binary
         let res = Command::new("objcopy")
             .args(&["-O", "binary", "--remove-section=.note.gnu.property",
-                    "./test", "./test.bin"]).status()
+                    linkfn.to_str().unwrap(),
+                    binfn.to_str().unwrap()]).status()
             .expect("Failed to launch objcopy");
         assert!(res.success(), "objcopy returned error");
 
-        Ok(std::fs::read("test.bin").expect("Failed to read JIT code"))
+        Ok(std::fs::read(&binfn).expect("Failed to read JIT code"))
     }
 }
