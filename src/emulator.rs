@@ -2504,13 +2504,20 @@ extern "C" void start(struct _state *state) {
     *({}*)(state->permissions + addr) |= perms >> 3;
 */
     auto block = addr / {};
-    auto idx   = block / 64;
-    auto bit   = 1 << (block % 64);
-    if ((state->dirty_bitmap[idx] & bit) == 0) {{
-         state->dirty_bitmap[idx] |= bit; //FIXME
-         state->dirty[state->dirty_idx++] = block;
-    }}
-
+    uint64_t trash;
+    asm(
+        "bts %[block], %[_BitBase]\n\t"
+        "jc 2f\n\t"
+        "movq %[dirty_idx], %[scratch]\n\t"
+        "movq %[block], (%[dirty], %[scratch])\n\t"
+        "addq $1, %[dirty_idx]\n\t"
+        "2:\n\t"
+        : [scratch] "=&r" (trash)
+        : [_BitBase] "m" (*state->dirty_bitmap), [block] "r" (block),
+          [dirty] "r" (state->dirty),
+          [dirty_idx] "m" (state->dirty_idx)
+        : "cc", "memory" // clobber condition code
+    );
     "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp, raw_mask,
         storetyp, DIRTY_BLOCK_SIZE);
 
