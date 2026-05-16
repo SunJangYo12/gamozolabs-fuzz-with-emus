@@ -2496,6 +2496,7 @@ extern "C" void start(struct _state *__restrict state) {
     perms &= {:#x}ULL;
     *({}*)(state->permissions + addr) |= perms >> 3;
 
+    // Slow area
     auto block = addr / {};
     auto idx   = block / 64;
     auto bit   = 1 << (block % 64);

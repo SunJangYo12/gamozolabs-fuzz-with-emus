@@ -38,3 +38,10 @@ dan hanya berfungsi di pc saya.
 
 # Menarik
 part 5_2 di menit 6:02:33 = debug jit c++ segv
+
+# tips
+cpu cycles terbanyak
+$ cat pctrace.txt | sort | uniq -c | sort -n
+
+
+
