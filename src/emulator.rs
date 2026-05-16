@@ -2509,7 +2509,7 @@ extern "C" void start(struct _state *state) {
         "bts %[block], %[_BitBase]\n\t"
         "jc 2f\n\t"
         "movq %[dirty_idx], %[scratch]\n\t"
-        "movq %[block], (%[dirty], %[scratch])\n\t"
+        "movq %[block], (%[dirty], %[scratch], 8)\n\t"
         "addq $1, %[dirty_idx]\n\t"
         "2:\n\t"
         : [scratch] "=&r" (trash)
