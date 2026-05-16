@@ -37,7 +37,6 @@ struct GuestState {
     regs:         [u64; 33],
     memory:       usize,
     permissions:  usize,
-    memory_len:   usize,
     dirty:        usize,
     dirty_idx:    usize,
     dirty_bitmap: usize,
@@ -452,7 +451,6 @@ impl Emulator {
                 regs:         [0; 33],
                 memory:       0,
                 permissions:  0,
-                memory_len:   0,
                 dirty:        0,
                 dirty_idx:    0,
                 dirty_bitmap: 0,
@@ -1133,7 +1131,6 @@ impl Emulator {
             // Set up the JIT state
             self.state.memory       = memory;
             self.state.permissions  = perms;
-            self.state.memory_len   = self.memory.len();
             self.state.dirty        = dirty;
             self.state.dirty_idx    = self.memory.dirty_len();
             self.state.dirty_bitmap = dirty_bitmap;
@@ -2226,7 +2223,6 @@ struct _state {
     uint64_t   regs[33];
     uint8_t   *__restrict const memory;
     uint8_t   *__restrict const permissions;
-    const size_t     memory_len;
     uintptr_t *__restrict const dirty;
     size_t     dirty_idx;
     uint64_t  *__restrict const dirty_bitmap;
@@ -2448,17 +2444,15 @@ extern "C" void start(struct _state *__restrict state) {
                     program += &format!("    addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
-                    /*
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
-    if (addr > state->memory_len - sizeof({}) ||
+    if (addr > {}ULL - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = ReadFault;
         state->reenter_pc = {:#x}ULL;
         return;
     }}
-    "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
-*/
+    "#, self.memory.len(), loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
                     set_reg!(inst.rd, format!("*({}*)(state->memory + addr)",
                         loadtyp));
                 }
@@ -2490,8 +2484,7 @@ extern "C" void start(struct _state *__restrict state) {
 
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
-    /*
-    if (addr > state->memory_len - sizeof({}) ||
+    if (addr > {}ULL - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = WriteFault;
         state->reenter_pc = {:#x}ULL;
@@ -2502,7 +2495,7 @@ extern "C" void start(struct _state *__restrict state) {
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
     *({}*)(state->permissions + addr) |= perms >> 3;
-*/
+
     auto block = addr / {};
     auto idx   = block / 64;
     auto bit   = 1 << (block % 64);
@@ -2511,7 +2504,8 @@ extern "C" void start(struct _state *__restrict state) {
          state->dirty[state->dirty_idx++] = block;
     }}
 
-    "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp, raw_mask,
+    "#, self.memory.len(),
+        storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp, raw_mask,
         storetyp, DIRTY_BLOCK_SIZE);
 
                     // Write the memory!
