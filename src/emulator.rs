@@ -2224,7 +2224,7 @@ struct _state {
     size_t     memory_len;
     uintptr_t *dirty;
     size_t     dirty_idx;
-    uint8_t   *dirty_bitmap;
+    uint64_t  *dirty_bitmap;
 
     uint64_t *trace_buffer;
     size_t   trace_idx;
@@ -2295,7 +2295,7 @@ extern "C" void start(struct _state *state) {
             // Create the instruction start label
             program += &format!("inst_{:016x}: {{\n", pc.0);
 
-            print!("Lifting {:#x?}\n", pc);
+            print!("Lifting {:x?}\n", pc);
 
             if ENABLE_TRACING {
                 program += &format!(r#"
@@ -2353,12 +2353,12 @@ extern "C" void start(struct _state *state) {
                         // avoid inlining boatloads of function calls
                         // their parents.
                         program +=
-                            "   state->exit_reason = IndirectBranch;\n";
+                            "    state->exit_reason = IndirectBranch;\n";
                         program +=
-                            &format!("   state->reenter_pc = {:#x}ULL;\n",
+                            &format!("    state->reenter_pc = {:#x}ULL;\n",
                                 target);
                         program +=
-                            "   return;\n";
+                            "    return;\n";
                     }
 
                     program += "}\n";
@@ -2408,10 +2408,10 @@ extern "C" void start(struct _state *state) {
 
                     get_reg!("auto rs1", inst.rs1);
                     get_reg!("auto rs2", inst.rs2);
-                    program += &format!("   if (({})rs1 {} ({})rs2) {{\n",
+                    program += &format!("    if (({})rs1 {} ({})rs2) {{\n",
                         cmptyp, cmpop, cmptyp);
                     program +=
-                        &format!("   goto inst_{:016x};\n", target);
+                        &format!("    goto inst_{:016x};\n", target);
                     program += "    }\n";
 
                     // Queue exploration of this target
@@ -2440,7 +2440,7 @@ extern "C" void start(struct _state *state) {
 
                     // Compute the address
                     get_reg!("auto addr", inst.rs1);
-                    program += &format!("   addr += {:#x}ULL;\n",
+                    program += &format!("    addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
                     // Check the bounds of the address and permissions
@@ -2479,7 +2479,7 @@ extern "C" void start(struct _state *state) {
 
                     // Compute the address
                     get_reg!("auto addr", inst.rs1);
-                    program += &format!("   addr += {:#x}ULL;\n",
+                    program += &format!("    addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
                     // Check the bounds of the address and permissions
@@ -2494,17 +2494,18 @@ extern "C" void start(struct _state *state) {
     // Enable reads for memory with RAW set
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
-    *({}*)(state->permissions + addr) |= perms >= 3;
+    *({}*)(state->permissions + addr) |= perms >> 3;
 
     auto block = addr / {};
     auto idx   = block / 64;
     auto bit   = 1 << (block % 64);
     if ((state->dirty_bitmap[idx] & bit) == 0) {{
+         state->dirty_bitmap[idx] |= bit; //FIXME
          state->dirty[state->dirty_idx++] = block;
     }}
 
-    "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp,
-        raw_mask, storetyp, DIRTY_BLOCK_SIZE);
+    "#, storetyp, storetyp, perm_mask, perm_mask, pc.0, storetyp, raw_mask,
+        storetyp, DIRTY_BLOCK_SIZE);
 
                     // Write the memory!
                     get_reg!(format!("*({}*)(state->memory + addr)",
@@ -2801,6 +2802,7 @@ extern "C" void start(struct _state *state) {
 
         // Create the ELF
         let res = Command::new("clang++").args(&[
+            "-march=native",
             "-O3", "-Wall",
             "-fno-asynchronous-unwind-tables",
             "-Wno-unused-label",
@@ -2824,4 +2826,3 @@ extern "C" void start(struct _state *state) {
         Ok(std::fs::read("test.bin").expect("Failed to read JIT code"))
     }
 }
-
