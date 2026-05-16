@@ -595,6 +595,19 @@ impl Emulator {
                                                     Perm(PERM_EXEC))
                 .map_err(|x| VmExit::ExecFault(x.is_crash().unwrap().1))?;
 
+            if ENABLE_TRACING {
+                // Frezzzz for my pc
+                //self.trace.push(self.state.regs);
+            }
+
+            // Update code coverage
+            corpus.code_coverage.entry_or_insert(
+                &VirtAddr(pc as usize), pc as usize, || {
+                    corpus.inputs.push(Box::new(self.fuzz_input.clone()));
+
+                    Box::new(())
+            });
+
             if let Some(callback) =
                     self.breakpoints.get(&VirtAddr(pc as usize)) {
                 // Invoke the breakpoint callback
@@ -611,14 +624,6 @@ impl Emulator {
 
             // Extract the opcode from the intruction
             let opcode = inst & 0b1111111;
-
-            // Update code coverage
-            corpus.code_coverage.entry_or_insert(
-                &VirtAddr(pc as usize), pc as usize, || {
-                    corpus.inputs.push(Box::new(self.fuzz_input.clone()));
-
-                    Box::new(())
-            });
 
 //            print!("{}\n\n", self);
 
@@ -2443,6 +2448,7 @@ extern "C" void start(struct _state *state) {
                     program += &format!("    addr += {:#x}ULL;\n",
                         inst.imm as i64 as u64);
 
+                    /*
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
     if (addr > state->memory_len - sizeof({}) ||
@@ -2452,7 +2458,7 @@ extern "C" void start(struct _state *state) {
         return;
     }}
     "#, loadtyp, loadtyp, perm_mask, perm_mask, pc.0);
-
+*/
                     set_reg!(inst.rd, format!("*({}*)(state->memory + addr)",
                         loadtyp));
                 }
@@ -2484,6 +2490,7 @@ extern "C" void start(struct _state *state) {
 
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
+    /*
     if (addr > state->memory_len - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = WriteFault;
@@ -2495,7 +2502,7 @@ extern "C" void start(struct _state *state) {
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
     *({}*)(state->permissions + addr) |= perms >> 3;
-
+*/
     auto block = addr / {};
     auto idx   = block / 64;
     auto bit   = 1 << (block % 64);
@@ -2808,7 +2815,7 @@ extern "C" void start(struct _state *state) {
             "-Wno-unused-label",
             "-Wno-unused-variable",
             "-Werror",
-            "-fno-strict-aliasing",
+            //"-fno-strict-aliasing",
             "-static", "-nostdlib","-ffreestanding",
             "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
             "-o", "./test",
