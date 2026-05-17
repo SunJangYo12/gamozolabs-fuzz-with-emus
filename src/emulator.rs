@@ -1142,6 +1142,7 @@ impl Emulator {
 
             let jit_cache = self.jit_cache.as_ref().unwrap();
 
+            let it = rdtsc();
             'quick_reenter: loop {
                 unsafe {
                     // Create a function pointer to the JIT
@@ -1166,6 +1167,8 @@ impl Emulator {
                     break 'quick_reenter;
                 }
             }
+            *vm_cycles += rdtsc() - it;
+
             // Update the PC reentry point
             self.set_reg(Register::Pc, self.state.reenter_pc);
 
@@ -2487,6 +2490,7 @@ extern "C" void start(struct _state *__restrict state) {
 
                     // Check the bounds of the address and permissions
                     program += &format!(r#"
+/*
     if (addr > {}ULL - sizeof({}) ||
             (*({}*)(state->permissions + addr) & {:#x}ULL) != {:#x}ULL) {{
         state->exit_reason = WriteFault;
@@ -2497,15 +2501,15 @@ extern "C" void start(struct _state *__restrict state) {
     // Enable reads for memory with RAW set
     auto perms = *({}*)(state->permissions + addr);
     perms &= {:#x}ULL;
-    *({}*)(state->permissions + addr) |= perms >> 3;
+    *({}*)(state->permissions + addr) |= perms >> 3;*/
 
     // Slow area
     auto block = addr / {};
     auto idx   = block / 64;
-    auto bit   = 1 << (block % 64);
+    auto bit   = 1ULL << (block % 64);
     if ((state->dirty_bitmap[idx] & bit) == 0) {{
-         state->dirty_bitmap[idx] |= bit; //FIXME
          state->dirty[state->dirty_idx++] = block;
+         state->dirty_bitmap[idx] |= bit;
     }}
 
     "#, self.memory.len(),
@@ -2835,7 +2839,7 @@ extern "C" void start(struct _state *__restrict state) {
             "-Wno-unused-label",
             "-Wno-unused-variable",
             "-Werror",
-            //"-fno-strict-aliasing",
+            "-fno-strict-aliasing",
             "-static", "-nostdlib","-ffreestanding",
             "-Wl,-Tldscript.ld", "-Wl,--gc-sections", "-Wl,--build-id=none",
             "-o", linkfn.to_str().unwrap(),

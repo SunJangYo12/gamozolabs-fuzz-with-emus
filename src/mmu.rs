@@ -96,6 +96,8 @@ impl Mmu {
     /// Restores memory back to the original state (eg. restore all dirty
     /// blocks to the state of `other`)
     pub fn reset(&mut self, other: &Mmu) {
+        //print!("Dirty list is {}\n", self.dirty.len());
+
         for &block in &self.dirty {
             // Get the start and end addresses of the dirtied memory
             let start = block * DIRTY_BLOCK_SIZE;
