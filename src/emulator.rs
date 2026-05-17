@@ -2,6 +2,8 @@
 
 use std::fmt;
 use std::process::Command;
+use std::path::Path;
+use std::time::Instant;
 use std::sync::Arc;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use crate::rdtsc;
@@ -1099,7 +1101,7 @@ impl Emulator {
                     jit_addr
                 } else {
                     // Generate the JIT for this PC
-                    let tmp = self.test_jit(VirtAddr(pc as usize))?;
+                    let tmp = self.test_jit(VirtAddr(pc as usize), corpus)?;
 
                     /*
                     // Write out the assembly
@@ -2191,7 +2193,8 @@ impl Emulator {
     }
 
     // Run the VM using the emulator
-    pub fn test_jit(&mut self, pc: VirtAddr) -> Result<Vec<u8>, VmExit> {
+    pub fn test_jit(&mut self, pc: VirtAddr, corpus: &Corpus)
+            -> Result<Vec<u8>, VmExit> {
         let mut visited = BTreeSet::new();
         let mut queued = VecDeque::new();
 
@@ -2798,6 +2801,21 @@ extern "C" void start(struct _state *__restrict state) {
         // Close the function scope
         program += "}\n";
 
+        // Create the jitcache folder
+        std::fs::create_dir_all("jitcache")
+            .expect("Failed to create jitcache directory");
+
+        // Hash the C++ file contents
+        let cachename = Path::new("jitcache")
+            .join(format!("{:x?}", pc.0));
+
+        if cachename.exists() {
+            return Ok(std::fs::read(&cachename)
+                .expect("Failed to read from jit cache"));
+        }
+
+        print!("{}\n", cachename.display());
+
         let cppfn = std::env::temp_dir().join(
             format!("fwetmp_{:?}.cpp", std::thread::current().id()));
         let linkfn = std::env::temp_dir().join(
@@ -2806,7 +2824,7 @@ extern "C" void start(struct _state *__restrict state) {
             format!("fwetmp_{:?}.bin", std::thread::current().id()));
         
         // Write out the test program
-        std::fs::write("program.cpp", program)
+        std::fs::write(&cppfn, program)
             .expect("Failed to write program");
 
         // Create the ELF
@@ -2832,6 +2850,10 @@ extern "C" void start(struct _state *__restrict state) {
                     binfn.to_str().unwrap()]).status()
             .expect("Failed to launch objcopy");
         assert!(res.success(), "objcopy returned error");
+
+        // Move the compiled output to the cache
+        std::fs::copy(&binfn, &cachename)
+            .expect("Failed to copy compiled JIT to cache file");
 
         Ok(std::fs::read(&binfn).expect("Failed to read JIT code"))
     }
