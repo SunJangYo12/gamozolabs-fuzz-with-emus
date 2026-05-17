@@ -1,5 +1,3 @@
-#![feature(asm)]
-
 pub mod primitive;
 pub mod mmu;
 pub mod emulator;
@@ -9,6 +7,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 use mmu::{VirtAddr, Perm, Section, PERM_READ, PERM_WRITE, PERM_EXEC};
 use emulator::{Emulator, Register, VmExit, EmuFile, FaultType, AddressType};
@@ -536,6 +535,9 @@ pub struct Corpus {
 
     /// Code coverage, unique PCs which havee executd during fuzzing
     pub code_coverage: Aht<VirtAddr, (), 1048576>,
+
+    /// Active compile jobs
+    compile_jobs: Mutex<BTreeSet<u128>>,
 }
 
 fn malloc_bp(emu: &mut Emulator) -> Result<(), VmExit> {
@@ -628,6 +630,7 @@ fn main() -> io::Result<()> {
         inputs: AtomicVec::new(),
         unique_crashes: Aht::new(),
         code_coverage: Aht::new(),
+        compile_jobs: Default::default(),
     });
 
     // Load the initial corpus
@@ -641,7 +644,7 @@ fn main() -> io::Result<()> {
     let jit_cache = Arc::new(JitCache::new(VirtAddr(16 * 1024 * 1024)));
 
     // Create an emulator using the JIT
-    let mut emu = Emulator::new(128 * 1024 * 1024).enable_jit(jit_cache); //32MB
+    let mut emu = Emulator::new(32 * 1024 * 1024).enable_jit(jit_cache); //32MB
 
     // Load the application into the emulator
     emu.memory.load("./objdump", &[
