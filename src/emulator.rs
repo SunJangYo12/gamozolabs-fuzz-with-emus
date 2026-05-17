@@ -2299,7 +2299,7 @@ extern "C" void start(struct _state *__restrict state) {
             // Create the instruction start label
             program += &format!("inst_{:016x}: {{\n", pc.0);
 
-            print!("Lifting {:x?}\n", pc);
+            //print!("Lifting {:x?}\n", pc);
 
             if ENABLE_TRACING {
                 program += &format!(r#"
@@ -2814,7 +2814,7 @@ extern "C" void start(struct _state *__restrict state) {
                 .expect("Failed to read from jit cache"));
         }
 
-        print!("{}\n", cachename.display());
+        print!("Compiling cache for {:#x}\n", pc.0);
 
         let cppfn = std::env::temp_dir().join(
             format!("fwetmp_{:?}.cpp", std::thread::current().id()));
